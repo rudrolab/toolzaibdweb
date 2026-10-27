@@ -157,7 +157,11 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
             {/* Header: Product Preview */}
             <div className="p-4 sm:p-5 border-b border-[#F1F5F9] flex items-center gap-3.5 bg-[#FAFBFD]">
               <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#E2E8F0] flex-shrink-0 bg-white">
-                <ProductCardBanner product={product} />
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.title} className="w-full h-full object-contain p-1" />
+                ) : (
+                  <ProductCardBanner product={product} />
+                )}
               </div>
               <div className="min-w-0 flex-1 pr-6">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">

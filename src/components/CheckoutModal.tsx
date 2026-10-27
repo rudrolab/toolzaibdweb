@@ -270,6 +270,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   })}
                 </div>
 
+                <div className="flex justify-center pt-1">
+                  <img
+                    src="./products/Minimal-Payment-Methods-Banner.webp"
+                    alt="Supported Bangladeshi Payment Methods"
+                    className="w-full max-w-sm rounded-lg bg-white p-1 border border-gray-800"
+                  />
+                </div>
+
                 {/* Instructions Box */}
                 <div className="p-4 rounded-xl bg-gray-900 border border-gray-800 space-y-3">
                   <div className="flex items-center justify-between">

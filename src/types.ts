@@ -33,6 +33,7 @@ export interface Product {
   specs: { label: string; value: string }[];
   colorTheme: string; // Tailwind gradient/accent class
   iconName: string;
+  imageUrl: string;
 }
 
 export interface CartItem {

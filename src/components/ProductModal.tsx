@@ -75,8 +75,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         {/* Modal Header */}
         <div className="p-6 sm:p-8 bg-gradient-to-r from-gray-900 via-[#111c38] to-gray-900 border-b border-gray-800">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gray-800/90 border border-gray-700 flex items-center justify-center text-amber-400 flex-shrink-0 shadow-lg">
-              <Icon name={product.iconName} className="w-8 h-8" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-gray-700 flex items-center justify-center p-1.5 flex-shrink-0 shadow-lg overflow-hidden">
+              {product.imageUrl ? (
+                <img src={product.imageUrl} alt={product.title} className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-full h-full bg-gray-800 flex items-center justify-center text-amber-400">
+                  <Icon name={product.iconName} className="w-8 h-8" />
+                </div>
+              )}
             </div>
 
             <div className="space-y-1 pr-6">

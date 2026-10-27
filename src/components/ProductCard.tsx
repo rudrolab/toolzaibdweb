@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Product } from '../types';
 import { ProductCardBanner } from './ProductCardBanner';
 
@@ -15,6 +15,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onQuickOrder,
   showInstantPill = false,
 }) => {
+  const [imgError, setImgError] = useState(false);
+
   const formatPrice = (price: number) => {
     return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
   };
@@ -24,15 +26,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div className="product-grid-item group flex flex-col justify-between bg-white rounded-2xl border-[1.5px] border-[#E2E8F0] p-2.5 sm:p-3 hover:-translate-y-1.5 hover:border-[#00C853] hover:shadow-[0_16px_30px_-8px_rgba(0,200,83,0.22),0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden h-full">
       
-      {/* 1:1 Aspect Ratio Image Container */}
+      {/* 1:1 Aspect Ratio Image Container (Woodmart .product-element-top) */}
       <div
         onClick={() => onSelectProduct(product)}
-        className="w-full aspect-square rounded-xl overflow-hidden relative cursor-pointer bg-[#F8FAFC] border border-[#E2E8F0]/70 group-hover:scale-[1.02] transition-transform duration-300"
+        className="w-full aspect-square rounded-xl overflow-hidden relative cursor-pointer bg-[#F8FAFC] border border-[#E2E8F0]/70"
       >
         {/* Instant Delivery Pill on top-left (Woodmart / MixProBD style) */}
         {(showInstantPill || product.instantDelivery) && !isSoldOut && (
           <div className="absolute top-2 left-2 z-10 bg-[#00C853] text-white font-bold text-[9.5px] px-2 py-0.5 rounded shadow-[0_2px_6px_rgba(0,200,83,0.35)] flex items-center gap-1 pointer-events-none">
-            <span>⚡</span>
+            <span className="text-[10px] leading-none">⚡</span>
             <span>Instant Delivery</span>
           </div>
         )}
@@ -51,14 +53,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        {/* Product Visual Artwork */}
-        <ProductCardBanner product={product} />
+        {/* Product Image with Woodmart Smooth Hover Zoom */}
+        {!imgError && product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.title}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-contain p-1.5 transition-transform duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          <ProductCardBanner product={product} />
+        )}
       </div>
 
-      {/* Card Content */}
+      {/* Card Content (.product-element-bottom) */}
       <div className="mt-2.5 flex flex-col items-center text-center w-full">
         
-        {/* Title & Star Rating Row */}
+        {/* Title & Star Rating Row (.mixprobd-card-title-row) */}
         <div className="flex items-center justify-center gap-1.5 w-full flex-wrap">
           <h3
             onClick={() => onSelectProduct(product)}
@@ -74,7 +86,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
         </div>
 
-        {/* Price Row */}
+        {/* Price Row (.price) */}
         <div className="mt-1 mb-2.5 flex items-center justify-center gap-1.5 text-center min-h-[22px]">
           {product.hasVariants && product.priceRange ? (
             <div className="text-[14px] sm:text-[15px] font-black text-[#00C853]">

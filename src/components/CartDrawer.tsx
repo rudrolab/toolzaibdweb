@@ -134,8 +134,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             cartItems.map((item, index) => (
               <div
                 key={`${item.product.id}-${item.selectedVariant?.id || 'standard'}-${index}`}
-                className="p-3.5 rounded-xl bg-gray-900/80 border border-gray-800/80 flex items-start gap-3 hover:border-gray-700 transition-all"
+                className="p-3 rounded-xl bg-gray-900/80 border border-gray-800/80 flex items-start gap-3 hover:border-gray-700 transition-all"
               >
+                <div className="w-12 h-12 rounded-lg bg-white border border-gray-700 p-0.5 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                  {item.product.imageUrl ? (
+                    <img src={item.product.imageUrl} alt={item.product.title} className="w-full h-full object-contain" />
+                  ) : (
+                    <ShoppingBag className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-1">
                     <h4 className="font-bold text-xs sm:text-sm text-white line-clamp-1">

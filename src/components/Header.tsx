@@ -141,8 +141,12 @@ export const Header: React.FC<HeaderProps> = ({
                       className="p-3 hover:bg-gray-800/70 cursor-pointer flex items-center justify-between gap-3 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gray-900 border border-gray-700 flex items-center justify-center text-amber-400 flex-shrink-0">
-                          <Icon name={prod.iconName} className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-lg bg-white border border-gray-700 flex items-center justify-center p-0.5 flex-shrink-0 overflow-hidden">
+                          {prod.imageUrl ? (
+                            <img src={prod.imageUrl} alt={prod.title} className="w-full h-full object-contain" />
+                          ) : (
+                            <Icon name={prod.iconName} className="w-5 h-5 text-amber-400" />
+                          )}
                         </div>
                         <div>
                           <div className="font-bold text-xs sm:text-sm text-white line-clamp-1">

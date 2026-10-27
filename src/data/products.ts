@@ -34,7 +34,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: '100% Replacement Warranty' }
     ],
     colorTheme: 'from-blue-600 to-indigo-700',
-    iconName: 'LayoutGrid'
+    iconName: 'LayoutGrid',
+    imageUrl: './products/365-1-home-430-q80.webp'
   },
   {
     id: 'google-ai-pro-premium',
@@ -67,7 +68,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: 'Full Term Warranty' }
     ],
     colorTheme: 'from-amber-500 to-red-600',
-    iconName: 'Sparkles'
+    iconName: 'Sparkles',
+    imageUrl: './products/Google-storage-mix-pro-bd-1-home-430-q80.webp'
   },
   {
     id: 'windows-11-pro',
@@ -101,7 +103,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant within 2 minutes' }
     ],
     colorTheme: 'from-blue-500 to-cyan-600',
-    iconName: 'Monitor'
+    iconName: 'Monitor',
+    imageUrl: './products/ChatGPT-Image-Jul-22-2026-05_38_49-PM-1-home-430-q80.webp'
   },
   {
     id: 'office-2024-ltsc-pro-plus',
@@ -131,7 +134,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant Key + ISO Guide' }
     ],
     colorTheme: 'from-red-600 to-rose-700',
-    iconName: 'FileSpreadsheet'
+    iconName: 'FileSpreadsheet',
+    imageUrl: './products/office-24-1-home-430-q80.webp'
   },
   {
     id: 'microsoft-2021-office-pro-plus',
@@ -160,7 +164,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant Delivery' }
     ],
     colorTheme: 'from-orange-600 to-amber-700',
-    iconName: 'FileText'
+    iconName: 'FileText',
+    imageUrl: './products/office-2021-opt-430x430.webp'
   },
   {
     id: 'duolingo-super-12-month',
@@ -190,7 +195,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: '365 Days Full Replacement' }
     ],
     colorTheme: 'from-emerald-500 to-green-600',
-    iconName: 'GraduationCap'
+    iconName: 'GraduationCap',
+    imageUrl: './products/Duolingo-Super-12-Month-mix-pro-bd-430x430.webp'
   },
   {
     id: 'canva-pro-1-year',
@@ -220,7 +226,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Support', value: 'All devices (Web, App, Tablet)' }
     ],
     colorTheme: 'from-cyan-500 to-blue-600',
-    iconName: 'Palette'
+    iconName: 'Palette',
+    imageUrl: './products/compressed_canva-pro-400x400.webp'
   },
   {
     id: 'truecaller-premium-1-year',
@@ -251,7 +258,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: '1 Year Full Warranty' }
     ],
     colorTheme: 'from-blue-600 to-sky-500',
-    iconName: 'ShieldCheck'
+    iconName: 'ShieldCheck',
+    imageUrl: './products/compressed_turecaller-1-400x400.webp'
   },
   {
     id: 'autodesk-all-apps-yearly',
@@ -283,7 +291,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant (15-30 Mins)' }
     ],
     colorTheme: 'from-indigo-600 to-purple-600',
-    iconName: 'Box'
+    iconName: 'Box',
+    imageUrl: './products/autodesk-opt-430x430.webp'
   },
   {
     id: 'youtube-premium',
@@ -316,7 +325,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: 'Duration-matched replacement guarantee' }
     ],
     colorTheme: 'from-red-600 to-red-800',
-    iconName: 'Youtube'
+    iconName: 'PlaySquare',
+    imageUrl: './products/compressed_youtube-premium-400x400.webp'
   },
   {
     id: 'notebooklm-pro',
@@ -347,7 +357,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant 5-10 minutes' }
     ],
     colorTheme: 'from-teal-500 to-cyan-700',
-    iconName: 'BookOpen'
+    iconName: 'BookOpen',
+    imageUrl: './products/notebooklm-pro-opt-430x430.webp'
   },
   {
     id: 'linkedin-career-premium-3-months',
@@ -377,7 +388,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Official Gift Upgrade Link' }
     ],
     colorTheme: 'from-blue-700 to-sky-600',
-    iconName: 'Briefcase'
+    iconName: 'Briefcase',
+    imageUrl: './products/compressed_Linkedin-Premium-400x400.webp'
   },
   {
     id: 'phone-ads-blocker-lifetime',
@@ -407,7 +419,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Setup', value: 'Easy 2-minute setup guide' }
     ],
     colorTheme: 'from-emerald-600 to-teal-700',
-    iconName: 'ShieldAlert'
+    iconName: 'ShieldAlert',
+    imageUrl: './products/compressed_add-blocker-400x400.webp'
   },
   {
     id: 'amazon-prime-6-months',
@@ -436,7 +449,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant Login Credentials' }
     ],
     colorTheme: 'from-sky-500 to-blue-700',
-    iconName: 'Tv'
+    iconName: 'Tv',
+    imageUrl: './products/amazon-prime-opt-430x430.webp'
   },
   {
     id: 'netflix-premium-12-months',
@@ -467,7 +481,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: '100% Replacement Warranty' }
     ],
     colorTheme: 'from-red-600 to-rose-950',
-    iconName: 'Film'
+    iconName: 'Film',
+    imageUrl: './products/netflix-premium-12-months-opt-430x430.webp'
   },
   {
     id: 'itunes-gift-card-usa',
@@ -501,7 +516,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant via WhatsApp/Email' }
     ],
     colorTheme: 'from-slate-700 to-gray-900',
-    iconName: 'CreditCard'
+    iconName: 'CreditCard',
+    imageUrl: './products/compressed_apple-gift-card-400x400.webp'
   },
   {
     id: 'follower-service',
@@ -530,7 +546,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Start Time', value: 'Within 1-6 hours' }
     ],
     colorTheme: 'from-pink-600 to-rose-500',
-    iconName: 'Users'
+    iconName: 'Users',
+    imageUrl: './products/compressed_follower-500x500.webp'
   },
   {
     id: 'meta-verified',
@@ -563,7 +580,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Term', value: 'Monthly' }
     ],
     colorTheme: 'from-blue-600 to-indigo-800',
-    iconName: 'BadgeCheck'
+    iconName: 'BadgeCheck',
+    imageUrl: './products/compressed_image-20-500x500.webp'
   },
   {
     id: 'capcut-pro-1-month',
@@ -592,7 +610,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant via Login ID' }
     ],
     colorTheme: 'from-cyan-400 to-indigo-600',
-    iconName: 'Video'
+    iconName: 'Video',
+    imageUrl: './products/capcut-pro-official-opt-700x700.webp'
   },
   {
     id: 'nanobanana-pro',
@@ -621,7 +640,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Warranty', value: '30 Days Full Replacement' }
     ],
     colorTheme: 'from-yellow-500 to-amber-600',
-    iconName: 'Zap'
+    iconName: 'Zap',
+    imageUrl: './products/nanobanana-pro-opt-700x700.webp'
   },
   {
     id: 'grammarly-premium',
@@ -654,7 +674,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Support', value: 'Browser, MS Word, Desktop, Mobile' }
     ],
     colorTheme: 'from-emerald-600 to-teal-800',
-    iconName: 'CheckCircle2'
+    iconName: 'CheckCircle2',
+    imageUrl: './products/grammarly-pro-opt-700x700.webp'
   },
   {
     id: 'telegram-premium',
@@ -688,7 +709,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Duration', value: '3, 6, or 12 Months' }
     ],
     colorTheme: 'from-sky-500 to-blue-600',
-    iconName: 'Send'
+    iconName: 'Send',
+    imageUrl: './products/telegram-premium-opt-700x700.webp'
   },
   {
     id: 'international-roaming-sim',
@@ -717,7 +739,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Coverage', value: 'Global 120+ countries' }
     ],
     colorTheme: 'from-amber-600 to-orange-700',
-    iconName: 'Smartphone'
+    iconName: 'Smartphone',
+    imageUrl: './products/international-roaming-opt-700x700.webp'
   },
   {
     id: 'chatgpt-plus',
@@ -750,7 +773,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Type', value: 'Shared & Private Options' }
     ],
     colorTheme: 'from-emerald-600 to-teal-800',
-    iconName: 'Bot'
+    iconName: 'Bot',
+    imageUrl: './products/compressed_gpt-plus-scaled-1-500x500.webp'
   },
   {
     id: 'supergrok-ai',
@@ -782,7 +806,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Provider', value: 'xAI' }
     ],
     colorTheme: 'from-zinc-700 to-neutral-900',
-    iconName: 'Cpu'
+    iconName: 'Cpu',
+    imageUrl: './products/supergrok-ai-opt-700x700.webp'
   },
   {
     id: 'meet-premium-3-month',
@@ -812,7 +837,8 @@ export const PRODUCTS_DATA: Product[] = [
       { label: 'Delivery', value: 'Instant Delivery' }
     ],
     colorTheme: 'from-green-600 to-emerald-800',
-    iconName: 'Video'
+    iconName: 'Video',
+    imageUrl: './products/meet-premium-3-month-opt-700x700.webp'
   }
 ];
 
@@ -835,5 +861,5 @@ export const BANGLADESH_PAYMENTS = [
   { id: 'crypto', name: 'USDT (Binance)', address: 'TPq3x98a...TRC20 (Ask on WA)', type: 'TRC20 / BEP20', fee: '0%', color: '#F3BA2F', logoText: 'Binance' },
 ];
 
-export const WHATSAPP_NUMBER = '8801886822838'; // ToolzAi BD official support line
+export const WHATSAPP_NUMBER = '8801886822838';
 export const WHATSAPP_URL = 'https://wa.me/8801886822838';

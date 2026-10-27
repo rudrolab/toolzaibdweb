@@ -88,9 +88,15 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory }) => {
               </div>
             </div>
 
-            {/* Payment Logos */}
+            {/* Payment Logos & Banner */}
             <div className="pt-3">
               <span className="text-[11px] text-gray-400 font-semibold block mb-2">Accepted Payment Methods:</span>
+              <img
+                src="./products/Minimal-Payment-Methods-Banner.webp"
+                alt="bKash, Nagad, Rocket, Upay, Cards, Binance"
+                className="w-full max-w-[280px] h-auto rounded-lg border border-gray-800 bg-white p-1 mb-2"
+                loading="lazy"
+              />
               <div className="flex flex-wrap gap-1.5">
                 {BANGLADESH_PAYMENTS.map((p) => (
                   <span
