@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { PRODUCTS_DATA, CATEGORIES } from './data/products';
 import { INITIAL_ORDERS, INITIAL_COUPONS, INITIAL_SETTINGS } from './data/initialOrders';
-import { Product, ProductVariant, CartItem, Order, OrderStatus, Coupon, StoreSettings } from './types';
+import { INITIAL_LANDING_PAGES } from './data/initialLandingPages';
+import { Product, ProductVariant, CartItem, Order, OrderStatus, Coupon, StoreSettings, LandingPage } from './types';
 import { CountdownBanner } from './components/CountdownBanner';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -19,7 +20,8 @@ import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Toast } from './components/Toast';
 import { AdminDashboard } from './components/admin/AdminDashboard';
-import { Search, Sparkles, Filter, ArrowUpDown, Megaphone } from 'lucide-react';
+import { LandingPageView } from './components/landing/LandingPageView';
+import { Search, Sparkles, Filter, ArrowUpDown, Megaphone, Flame } from 'lucide-react';
 
 export function App() {
   // 1. Persistent Products Catalog (Managed via Admin Dashboard)
@@ -62,7 +64,17 @@ export function App() {
     }
   });
 
-  // 5. Shopping Cart
+  // 5. Landing Pages Campaigns
+  const [landingPages, setLandingPages] = useState<LandingPage[]>(() => {
+    try {
+      const saved = localStorage.getItem('toolzaibd_landing_pages');
+      return saved ? JSON.parse(saved) : INITIAL_LANDING_PAGES;
+    } catch {
+      return INITIAL_LANDING_PAGES;
+    }
+  });
+
+  // 6. Shopping Cart
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('toolzaibd_cart');
@@ -72,10 +84,23 @@ export function App() {
     }
   });
 
-  // 6. Navigation, Filters, Modals
+  // Helper to extract landing page slug from URL hash
+  const getLandingSlug = (): string | null => {
+    const clean = window.location.hash.replace(/^#\/?/, '').trim();
+    if (clean.startsWith('landing=') || clean.startsWith('lp=') || clean.startsWith('campaign=')) {
+      return clean.split('=')[1] || null;
+    }
+    if (clean === 'gemini-pro-18') {
+      return 'gemini-pro-18';
+    }
+    return null;
+  };
+
+  // 7. Navigation, Filters, Modals
   const [isAdminView, setIsAdminView] = useState<boolean>(() => {
     return window.location.hash === '#admin';
   });
+  const [activeLandingSlug, setActiveLandingSlug] = useState<string | null>(() => getLandingSlug());
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -99,6 +124,14 @@ export function App() {
       console.error(e);
     }
   }, [products]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('toolzaibd_landing_pages', JSON.stringify(landingPages));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [landingPages]);
 
   useEffect(() => {
     try {
@@ -136,6 +169,7 @@ export function App() {
   useEffect(() => {
     const handleHashChange = () => {
       setIsAdminView(window.location.hash === '#admin');
+      setActiveLandingSlug(getLandingSlug());
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -144,11 +178,19 @@ export function App() {
   const openAdmin = () => {
     window.location.hash = 'admin';
     setIsAdminView(true);
+    setActiveLandingSlug(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const closeAdmin = () => {
     window.location.hash = '';
+    setIsAdminView(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleViewLandingPage = (slug: string) => {
+    window.location.hash = `landing=${slug}`;
+    setActiveLandingSlug(slug);
     setIsAdminView(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -175,6 +217,25 @@ export function App() {
   const handleDeleteProduct = (productId: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
     setToastMessage('Product deleted from catalog.');
+  };
+
+  const handleSaveLandingPage = (page: LandingPage) => {
+    setLandingPages((prev) => {
+      const idx = prev.findIndex((p) => p.id === page.id);
+      if (idx > -1) {
+        const next = [...prev];
+        next[idx] = page;
+        return next;
+      } else {
+        return [page, ...prev];
+      }
+    });
+    setToastMessage(`Campaign "${page.title}" saved successfully!`);
+  };
+
+  const handleDeleteLandingPage = (pageId: string) => {
+    setLandingPages((prev) => prev.filter((p) => p.id !== pageId));
+    setToastMessage('Campaign deleted.');
   };
 
   const handlePlaceOrder = (newOrder: Order) => {
@@ -332,7 +393,32 @@ export function App() {
           onDeleteCoupon={handleDeleteCoupon}
           settings={settings}
           onSaveSettings={handleSaveSettings}
+          landingPages={landingPages}
+          onSaveLandingPage={handleSaveLandingPage}
+          onDeleteLandingPage={handleDeleteLandingPage}
+          onViewLandingPage={handleViewLandingPage}
           onCloseAdmin={closeAdmin}
+        />
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      </>
+    );
+  }
+
+  // ================= LANDING PAGE CAMPAIGN RENDER =================
+  const activeLandingPage = landingPages.find((lp) => lp.slug === activeLandingSlug);
+
+  if (activeLandingPage) {
+    return (
+      <>
+        <LandingPageView
+          landingPage={activeLandingPage}
+          onPlaceOrder={handlePlaceOrder}
+          onGoHome={() => {
+            window.location.hash = '';
+            setActiveLandingSlug(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenAdmin={openAdmin}
         />
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       </>
@@ -348,6 +434,28 @@ export function App() {
         <div className="bg-[#E6FCED] border-b border-[#86EFAC] text-[#15803D] text-[11px] sm:text-xs py-1.5 px-4 text-center font-bold flex items-center justify-center gap-1.5 shadow-sm">
           <Megaphone className="w-3.5 h-3.5 text-[#00C853] flex-shrink-0 animate-bounce" />
           <span>{settings.announcementNotice}</span>
+        </div>
+      )}
+
+      {/* Active Special Campaign Announcement Bar */}
+      {landingPages.length > 0 && landingPages.some(lp => lp.isActive) && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white text-xs sm:text-sm py-2 px-4 shadow-sm border-b border-emerald-500/30">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-400 text-slate-900 font-black text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow">
+                <Flame className="w-3.5 h-3.5 text-red-600 fill-red-600 animate-pulse" /> স্পেশাল অফার
+              </span>
+              <span className="font-semibold text-emerald-50 line-clamp-1">
+                {landingPages[0].title} — মাত্র <strong className="text-amber-300 font-extrabold text-sm sm:text-base">৳{landingPages[0].offerPrice}</strong> (নিয়মিত ৳{landingPages[0].regularPrice})!
+              </span>
+            </div>
+            <button
+              onClick={() => handleViewLandingPage(landingPages[0].slug)}
+              className="bg-white/95 hover:bg-white text-emerald-800 text-xs font-bold px-3 py-1 rounded-full shadow hover:scale-105 active:scale-95 transition-all flex items-center gap-1 flex-shrink-0"
+            >
+              অফারটি দেখুন ➔
+            </button>
+          </div>
         </div>
       )}
 

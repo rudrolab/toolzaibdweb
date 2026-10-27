@@ -89,3 +89,38 @@ export interface StoreSettings {
   announcementNotice: string;
   isNoticeActive: boolean;
 }
+
+export interface LandingPageFeature {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface LandingPageFAQ {
+  question: string;
+  answer: string;
+}
+
+export interface LandingPage {
+  id: string;
+  slug: string;
+  title: string;
+  headline: string;
+  subheadline: string;
+  badgeText: string;
+  regularPrice: number;
+  offerPrice: number;
+  saveBadgeText: string;
+  stockRemaining: number;
+  stockSold: number;
+  sliderImages: string[];
+  scrollingFeatures: string[];
+  features: LandingPageFeature[];
+  faqs: LandingPageFAQ[];
+  videoTutorialUrl?: string;
+  activationGuideImages: string[];
+  isActive: boolean;
+  createdAt: string;
+  viewsCount: number;
+  conversionsCount: number;
+}

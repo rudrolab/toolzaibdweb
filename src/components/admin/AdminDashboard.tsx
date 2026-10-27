@@ -18,10 +18,14 @@ import {
   Eye,
   Store,
   Check,
+  Globe,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
-import { Product, Order, OrderStatus, Coupon, StoreSettings } from '../../types';
+import { Product, Order, OrderStatus, Coupon, StoreSettings, LandingPage } from '../../types';
 import { ProductFormModal } from './ProductFormModal';
 import { OrderDetailsModal } from './OrderDetailsModal';
+import { LandingPageFormModal } from './LandingPageFormModal';
 import { Icon } from '../Icon';
 
 interface AdminDashboardProps {
@@ -35,12 +39,16 @@ interface AdminDashboardProps {
   onAddCoupon: (c: Coupon) => void;
   onToggleCoupon: (id: string) => void;
   onDeleteCoupon: (id: string) => void;
+  landingPages: LandingPage[];
+  onSaveLandingPage: (lp: LandingPage) => void;
+  onDeleteLandingPage: (id: string) => void;
+  onViewLandingPage: (slug: string) => void;
   settings: StoreSettings;
   onSaveSettings: (s: StoreSettings) => void;
   onCloseAdmin: () => void;
 }
 
-type TabType = 'overview' | 'products' | 'orders' | 'coupons' | 'settings';
+type TabType = 'overview' | 'products' | 'orders' | 'landing' | 'coupons' | 'settings';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   products,
@@ -53,6 +61,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddCoupon,
   onToggleCoupon,
   onDeleteCoupon,
+  landingPages,
+  onSaveLandingPage,
+  onDeleteLandingPage,
+  onViewLandingPage,
   settings,
   onSaveSettings,
   onCloseAdmin,
@@ -69,6 +81,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+
+  // Landing pages states
+  const [editingLandingPage, setEditingLandingPage] = useState<LandingPage | null>(null);
+  const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(false);
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
   // Coupons states
   const [newCouponCode, setNewCouponCode] = useState('');
@@ -169,6 +186,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsProductFormOpen(true);
   };
 
+  const handleOpenNewLandingPage = () => {
+    setEditingLandingPage(null);
+    setIsLandingPageModalOpen(true);
+  };
+
+  const handleOpenEditLandingPage = (lp: LandingPage) => {
+    setEditingLandingPage(lp);
+    setIsLandingPageModalOpen(true);
+  };
+
+  const handleCopyLandingLink = (slug: string) => {
+    const url = `${window.location.origin}${window.location.pathname}#landing=${slug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug(null), 2000);
+  };
+
   const handleCreateCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCouponCode.trim()) return;
@@ -228,6 +262,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* Quick Actions */}
             <div className="flex items-center gap-2.5 sm:gap-3">
               <button
+                onClick={handleOpenNewLandingPage}
+                className="hidden md:flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md transition-all"
+              >
+                <Globe className="w-4 h-4" />
+                <span>New Landing Page</span>
+              </button>
+
+              <button
                 onClick={handleOpenNewProduct}
                 className="hidden sm:flex items-center gap-1.5 bg-[#00C853] hover:bg-[#00B248] text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-[0_4px_14px_rgba(0,200,83,0.3)] transition-all"
               >
@@ -258,6 +300,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               <BarChart3 className="w-4 h-4" />
               <span>Statistics & Overview</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('landing')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeTab === 'landing'
+                  ? 'bg-[#E6FCED] text-[#15803D] border border-[#86EFAC]'
+                  : 'text-slate-600 hover:text-black hover:bg-[#F1F5F9]'
+              }`}
+            >
+              <Globe className="w-4 h-4 text-blue-600" />
+              <span>Landing Pages ({landingPages.length})</span>
+              <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                NEW
+              </span>
             </button>
 
             <button
@@ -565,7 +622,158 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* ================= TAB 2: PRODUCTS CATALOG ================= */}
+        {/* ================= TAB 2: LANDING PAGES BUILDER & MANAGER ================= */}
+        {activeTab === 'landing' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            
+            {/* Header Action Bar */}
+            <div className="p-5 bg-white border border-[#E2E8F0] rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-heading font-black text-base sm:text-lg text-[#0F172A]">
+                    Custom Landing Page Campaigns
+                  </h3>
+                  <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                    High Converting Funnels
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Create standalone marketing campaign pages with instant express checkout, video guides, and direct bKash/Nagad integration.
+                </p>
+              </div>
+
+              <button
+                onClick={handleOpenNewLandingPage}
+                className="flex items-center gap-2 bg-[#00C853] hover:bg-[#00B248] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_14px_rgba(0,200,83,0.3)] transition-all active:scale-95 whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Landing Page</span>
+              </button>
+            </div>
+
+            {/* Landing Pages Table */}
+            <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-slate-500 font-bold uppercase text-[10.5px]">
+                      <th className="p-3 pl-4">Campaign Title</th>
+                      <th className="p-3">Landing URL / Slug</th>
+                      <th className="p-3">Offer Price</th>
+                      <th className="p-3">Stock Info</th>
+                      <th className="p-3">Views / Orders</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right pr-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8F0]">
+                    {landingPages.map((lp) => (
+                      <tr key={lp.id} className="hover:bg-[#F8FAFC] transition-colors">
+                        
+                        <td className="p-3 pl-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-slate-900 border border-[#E2E8F0] p-0.5 overflow-hidden flex items-center justify-center flex-shrink-0">
+                              <img
+                                src={lp.sliderImages[0] || './products/Google-18-1-pic-lp1024.webp'}
+                                alt="thumb"
+                                className="w-full h-full object-cover rounded"
+                              />
+                            </div>
+                            <div>
+                              <div className="font-bold text-[#0F172A] line-clamp-1">{lp.title}</div>
+                              <span className="text-[10px] text-amber-600 font-semibold">{lp.badgeText}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5">
+                            <code className="bg-[#F1F5F9] text-blue-600 px-2 py-0.5 rounded font-mono font-bold text-[11px]">
+                              /landing/{lp.slug}
+                            </code>
+                            <button
+                              onClick={() => handleCopyLandingLink(lp.slug)}
+                              className="text-slate-400 hover:text-slate-700 p-1"
+                              title="Copy URL"
+                            >
+                              {copiedSlug === lp.slug ? (
+                                <Check className="w-3.5 h-3.5 text-[#00C853]" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="font-black text-[#00C853] text-sm">{formatPrice(lp.offerPrice)}</span>
+                          <span className="text-[10.5px] text-slate-400 line-through ml-1.5">{formatPrice(lp.regularPrice)}</span>
+                        </td>
+
+                        <td className="p-3 text-slate-600">
+                          <span className="font-bold text-amber-600">{lp.stockRemaining} left</span>
+                          <span className="text-[10.5px] text-slate-400 block">{lp.stockSold} sold</span>
+                        </td>
+
+                        <td className="p-3 text-slate-600">
+                          <span className="font-bold text-[#0F172A]">{lp.viewsCount} views</span>
+                          <span className="text-[10.5px] text-[#15803D] font-bold block">{lp.conversionsCount} sales</span>
+                        </td>
+
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              lp.isActive
+                                ? 'bg-[#E6FCED] text-[#15803D] border border-[#86EFAC]'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {lp.isActive ? 'Active Live ✓' : 'Draft'}
+                          </span>
+                        </td>
+
+                        <td className="p-3 text-right pr-4 whitespace-nowrap space-x-2">
+                          <button
+                            onClick={() => onViewLandingPage(lp.slug)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#E6FCED] text-[#15803D] border border-[#86EFAC] hover:bg-[#DCFCE7] font-bold text-xs transition-all shadow-sm"
+                            title="Open Live Landing Page"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenEditLandingPage(lp)}
+                            className="p-1.5 rounded-lg bg-white border border-[#CBD5E1] text-slate-700 hover:text-[#00C853] hover:border-[#86EFAC] transition-all shadow-sm"
+                            title="Edit Landing Page"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Delete landing page "${lp.title}"?`)) {
+                                onDeleteLandingPage(lp.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg bg-white border border-[#CBD5E1] text-slate-700 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+                            title="Delete Landing Page"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ================= TAB 3: PRODUCTS CATALOG ================= */}
         {activeTab === 'products' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             
@@ -729,7 +937,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* ================= TAB 3: ORDERS MANAGEMENT ================= */}
+        {/* ================= TAB 4: ORDERS MANAGEMENT ================= */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             
@@ -849,7 +1057,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* ================= TAB 4: COUPONS & DISCOUNTS ================= */}
+        {/* ================= TAB 5: COUPONS & DISCOUNTS ================= */}
         {activeTab === 'coupons' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             
@@ -983,7 +1191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* ================= TAB 5: STORE SETTINGS ================= */}
+        {/* ================= TAB 6: STORE SETTINGS ================= */}
         {activeTab === 'settings' && (
           <div className="p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm max-w-3xl mx-auto space-y-6 animate-in fade-in duration-200">
             <div>
@@ -1098,6 +1306,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onClose={() => setIsProductFormOpen(false)}
         productToEdit={editingProduct}
         onSave={onSaveProduct}
+      />
+
+      {/* Landing Page Form Modal */}
+      <LandingPageFormModal
+        isOpen={isLandingPageModalOpen}
+        onClose={() => setIsLandingPageModalOpen(false)}
+        landingPageToEdit={editingLandingPage}
+        onSave={onSaveLandingPage}
       />
 
       {/* Order Details Modal */}
