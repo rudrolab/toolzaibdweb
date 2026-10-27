@@ -43,75 +43,75 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#0F172A] border border-gray-700/80 rounded-2xl shadow-2xl overflow-hidden p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-2xl overflow-hidden p-6">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-900/80 rounded-full border border-gray-700"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#F1F5F9] text-slate-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className="w-10 h-10 rounded-xl bg-[#E6FCED] border border-[#86EFAC] flex items-center justify-center text-[#00C853]">
             <PackageCheck className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-heading font-black text-lg text-white">Track Order Status</h3>
-            <p className="text-xs text-gray-400">Enter your Order ID (e.g. TZ-123456) or WhatsApp Phone</p>
+            <h3 className="font-heading font-black text-lg text-[#0F172A]">Track Order Status</h3>
+            <p className="text-xs text-slate-500 font-medium">Enter your Order ID (e.g. TZ-123456) or WhatsApp Phone</p>
           </div>
         </div>
 
         <form onSubmit={handleTrack} className="space-y-4">
           <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g. TZ-582914 or 017XXXXXXXX"
-              className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+              className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] focus:bg-white"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all"
+            className="w-full bg-[#00C853] hover:bg-[#00B248] text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all active:scale-95"
           >
             Check Status
           </button>
         </form>
 
         {searched && (
-          <div className="mt-5 pt-4 border-t border-gray-800 text-xs">
+          <div className="mt-5 pt-4 border-t border-[#E2E8F0] text-xs">
             {trackedOrder ? (
-              <div className="p-3.5 rounded-xl bg-gray-900/90 border border-emerald-500/30 space-y-2.5">
+              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#86EFAC] space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-gray-300 font-bold">{trackedOrder.id}</span>
-                  <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-bold text-[10px]">
-                    <CheckCircle2 className="w-3 h-3" /> Delivered
+                  <span className="font-mono text-[#0F172A] font-bold">{trackedOrder.id}</span>
+                  <span className="inline-flex items-center gap-1 bg-[#E6FCED] text-[#15803D] px-2 py-0.5 rounded font-bold text-[10px]">
+                    <CheckCircle2 className="w-3 h-3 text-[#00C853]" /> Delivered
                   </span>
                 </div>
-                <div className="text-gray-400 flex items-center gap-1 text-[11px]">
-                  <Clock className="w-3 h-3 text-amber-400" /> {trackedOrder.date}
+                <div className="text-slate-500 flex items-center gap-1 text-[11px]">
+                  <Clock className="w-3 h-3 text-[#00C853]" /> {trackedOrder.date}
                 </div>
-                <p className="text-gray-300 text-[11px] bg-gray-950 p-2 rounded border border-gray-800">
+                <p className="text-slate-700 text-[11px] bg-white p-2.5 rounded border border-[#E2E8F0]">
                   {trackedOrder.items}
                 </p>
               </div>
             ) : (
-              <div className="p-3.5 rounded-xl bg-gray-900/90 border border-amber-500/30 space-y-2 text-center">
-                <AlertCircle className="w-5 h-5 text-amber-400 mx-auto" />
-                <p className="text-gray-300 text-[11px]">
+              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-amber-300 space-y-2 text-center">
+                <AlertCircle className="w-5 h-5 text-amber-500 mx-auto" />
+                <p className="text-slate-600 text-[11px]">
                   Could not find an instant match for "{query}". If you just sent bKash/Nagad, our agents are verifying it now.
                 </p>
                 <button
                   type="button"
                   onClick={handleSupportConnect}
-                  className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] mx-auto transition-all"
+                  className="flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#20BD5A] text-white px-3 py-1.5 rounded-lg font-bold text-[11px] mx-auto transition-all shadow-sm"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>Ask Support on WhatsApp</span>

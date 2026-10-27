@@ -38,17 +38,17 @@ export const CustomerReviews: React.FC = () => {
   ];
 
   return (
-    <section className="py-14 sm:py-20 border-b border-gray-800/80 bg-[#090D16]">
+    <section className="py-14 sm:py-20 border-b border-[#E2E8F0] bg-[#F8FAFC]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
-          <span className="text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold text-[#15803D] uppercase tracking-widest bg-[#E6FCED] border border-[#86EFAC] px-3.5 py-1 rounded-full shadow-sm">
             Real Customer Feedback
           </span>
-          <h2 className="font-heading font-black text-2xl sm:text-4xl text-white">
+          <h2 className="font-heading font-black text-2xl sm:text-4xl text-[#0F172A] tracking-tight">
             Trusted by 12,000+ Happy Users
           </h2>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-slate-600">
             See what students, remote workers, and creative professionals across Bangladesh have to say about ToolzAi BD.
           </p>
         </div>
@@ -57,7 +57,7 @@ export const CustomerReviews: React.FC = () => {
           {reviews.map((rev, idx) => (
             <div
               key={idx}
-              className="p-5 rounded-2xl bg-gradient-to-b from-[#111827] to-[#0c1220] border border-gray-800 flex flex-col justify-between hover:border-amber-500/30 transition-all shadow-md"
+              className="p-5 rounded-2xl bg-white border border-[#E2E8F0] flex flex-col justify-between hover:border-[#86EFAC] hover:shadow-md transition-all"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -66,24 +66,24 @@ export const CustomerReviews: React.FC = () => {
                       <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
                     ))}
                   </div>
-                  <Quote className="w-4 h-4 text-gray-600" />
+                  <Quote className="w-4 h-4 text-slate-300" />
                 </div>
 
-                <p className="text-xs text-gray-300 leading-relaxed italic">
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic">
                   "{rev.text}"
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-gray-800/80 mt-4 space-y-1">
+              <div className="pt-4 border-t border-[#F1F5F9] mt-4 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-white flex items-center gap-1">
+                  <span className="font-bold text-xs text-[#0F172A] flex items-center gap-1">
                     {rev.name}
-                    <CheckCircle className="w-3 h-3 text-emerald-400" />
+                    <CheckCircle className="w-3 h-3 text-[#00C853]" />
                   </span>
-                  <span className="text-[10px] text-gray-500">{rev.date}</span>
+                  <span className="text-[10px] text-slate-400">{rev.date}</span>
                 </div>
-                <div className="text-[11px] text-gray-400">{rev.role}</div>
-                <div className="text-[10px] font-semibold text-amber-400/90 pt-0.5">
+                <div className="text-[11px] text-slate-500">{rev.role}</div>
+                <div className="text-[10px] font-bold text-[#00C853] pt-0.5">
                   Verified: {rev.product}
                 </div>
               </div>

@@ -32,17 +32,17 @@ export const FAQSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-14 sm:py-20 border-b border-gray-800/80 bg-[#0B0F19]">
+    <section className="py-14 sm:py-20 border-b border-[#E2E8F0] bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center mb-12 space-y-2">
-          <span className="text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold text-[#15803D] uppercase tracking-widest bg-[#E6FCED] border border-[#86EFAC] px-3.5 py-1 rounded-full shadow-sm">
             Help Center
           </span>
-          <h2 className="font-heading font-black text-2xl sm:text-4xl text-white">
+          <h2 className="font-heading font-black text-2xl sm:text-4xl text-[#0F172A] tracking-tight">
             Frequently Asked Questions
           </h2>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-slate-600">
             Have questions before placing your order? Here is everything you need to know.
           </p>
         </div>
@@ -53,25 +53,25 @@ export const FAQSection: React.FC = () => {
             return (
               <div
                 key={idx}
-                className="rounded-xl bg-gray-900/80 border border-gray-800 overflow-hidden transition-all"
+                className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden transition-all shadow-sm"
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : idx)}
-                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 text-white hover:text-amber-400 transition-colors"
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 text-[#0F172A] hover:text-[#00C853] transition-colors"
                 >
                   <span className="font-heading font-bold text-sm sm:text-base flex items-center gap-2.5">
-                    <HelpCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <HelpCircle className="w-4 h-4 text-[#00C853] flex-shrink-0" />
                     {faq.q}
                   </span>
                   <ChevronDown
-                    className={`w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
-                      isOpen ? 'rotate-180 text-amber-400' : ''
+                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+                      isOpen ? 'rotate-180 text-[#00C853]' : ''
                     }`}
                   />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-gray-300 border-t border-gray-800/60 leading-relaxed">
+                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-600 border-t border-[#E2E8F0] leading-relaxed">
                     {faq.a}
                   </div>
                 )}
