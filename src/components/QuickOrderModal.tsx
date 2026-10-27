@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Copy, Zap, MessageCircle } from 'lucide-react';
-import { Product, ProductVariant } from '../types';
+import { Product, ProductVariant, Order } from '../types';
 import { BANGLADESH_PAYMENTS, WHATSAPP_URL } from '../data/products';
 import { ProductCardBanner } from './ProductCardBanner';
 
@@ -8,12 +8,14 @@ interface QuickOrderModalProps {
   product: Product | null;
   onClose: () => void;
   onOrderSuccess: (msg: string) => void;
+  onPlaceOrder?: (order: Order) => void;
 }
 
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   product,
   onClose,
   onOrderSuccess,
+  onPlaceOrder,
 }) => {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
@@ -108,6 +110,34 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       (trxId ? `Transaction ID: ${trxId}\n` : '') +
       `\nPlease verify and deliver digital credentials instantly.`
     );
+
+    const newOrder: Order = {
+      id: orderId,
+      customerName: customerName || 'Customer',
+      customerPhone,
+      customerEmail,
+      items: [
+        {
+          productId: product.id,
+          title: product.title,
+          variantName: selectedVariant?.name,
+          quantity,
+          price: unitPrice,
+        }
+      ],
+      subtotal: rawSubtotal,
+      discount,
+      total: finalTotal,
+      paymentMethod: activeMethod.name,
+      senderNumber: senderNumber || undefined,
+      trxId: trxId || undefined,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onPlaceOrder) {
+      onPlaceOrder(newOrder);
+    }
 
     setOrderComplete(true);
     onOrderSuccess(`Order #${orderId} placed successfully!`);

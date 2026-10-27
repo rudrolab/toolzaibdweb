@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShoppingBag, Search, MessageCircle, Menu, X, Shield, Sparkles, PackageCheck, ArrowRight, Star } from 'lucide-react';
+import { ShoppingBag, Search, MessageCircle, Menu, X, Shield, Sparkles, PackageCheck, ArrowRight, Star, LayoutDashboard } from 'lucide-react';
 import { WHATSAPP_URL, PRODUCTS_DATA } from '../data/products';
 import { Product } from '../types';
 import { Icon } from './Icon';
@@ -13,6 +13,7 @@ interface HeaderProps {
   onSelectCategory: (cat: string) => void;
   onSelectProduct: (p: Product) => void;
   onOpenTrackOrder: () => void;
+  onOpenAdmin: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectCategory,
   onSelectProduct,
   onOpenTrackOrder,
+  onOpenAdmin,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -201,6 +203,16 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Track Order</span>
             </button>
 
+            {/* Admin Management Dashboard Button */}
+            <button
+              onClick={onOpenAdmin}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 text-xs font-bold transition-all shadow-sm"
+              title="Open Store Management Dashboard"
+            >
+              <LayoutDashboard className="w-4 h-4 text-[#00C853]" />
+              <span>Dashboard</span>
+            </button>
+
             {/* WhatsApp Support Button */}
             <a
               href={WHATSAPP_URL}
@@ -303,6 +315,17 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Track Order</span>
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onOpenAdmin();
+            }}
+            className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-bold text-xs text-center"
+          >
+            <LayoutDashboard className="w-4 h-4 text-[#00C853]" />
+            <span>Store Management Dashboard</span>
+          </button>
 
           <div className="pt-2 border-t border-[#E2E8F0] text-xs text-slate-500 flex items-center justify-between">
             <span className="flex items-center gap-1 font-medium">

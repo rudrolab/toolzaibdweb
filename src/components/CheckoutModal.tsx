@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, Sparkles } from 'lucide-react';
-import { CartItem } from '../types';
+import { CartItem, Order } from '../types';
 import { BANGLADESH_PAYMENTS, WHATSAPP_URL } from '../data/products';
 
 interface CheckoutModalProps {
@@ -10,6 +10,7 @@ interface CheckoutModalProps {
   discountAmount: number;
   couponCode: string;
   onOrderSuccess: () => void;
+  onPlaceOrder?: (order: Order) => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -19,6 +20,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   discountAmount,
   couponCode,
   onOrderSuccess,
+  onPlaceOrder,
 }) => {
   const [selectedPayment, setSelectedPayment] = useState(BANGLADESH_PAYMENTS[0].id);
   const [customerName, setCustomerName] = useState('');
@@ -83,6 +85,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       (trxId ? `Transaction ID: ${trxId}\n` : '') +
       `\nPlease verify payment and deliver the digital credentials.`
     );
+
+    const newOrder: Order = {
+      id: orderId,
+      customerName: customerName || 'Customer',
+      customerPhone,
+      customerEmail,
+      items: cartItems.map((it) => ({
+        productId: it.product.id,
+        title: it.product.title,
+        variantName: it.selectedVariant?.name,
+        quantity: it.quantity,
+        price: it.price,
+      })),
+      subtotal: rawSubtotal,
+      discount: discountAmount,
+      total: finalTotal,
+      paymentMethod: activeMethod.name,
+      senderNumber: senderNumber || undefined,
+      trxId: trxId || undefined,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onPlaceOrder) {
+      onPlaceOrder(newOrder);
+    }
 
     setOrderComplete(true);
     onOrderSuccess();

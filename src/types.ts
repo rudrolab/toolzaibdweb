@@ -42,3 +42,50 @@ export interface CartItem {
   quantity: number;
   price: number;
 }
+
+export type OrderStatus = 'pending' | 'verified' | 'delivered' | 'cancelled';
+
+export interface OrderItem {
+  productId: string;
+  title: string;
+  variantName?: string;
+  quantity: number;
+  price: number;
+}
+
+export interface Order {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  items: OrderItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  paymentMethod: string;
+  senderNumber?: string;
+  trxId?: string;
+  status: OrderStatus;
+  createdAt: string;
+  notes?: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  minSpend?: number;
+  isActive: boolean;
+  usageCount: number;
+}
+
+export interface StoreSettings {
+  storeName: string;
+  whatsappNumber: string;
+  bkashNumber: string;
+  nagadNumber: string;
+  rocketNumber: string;
+  announcementNotice: string;
+  isNoticeActive: boolean;
+}

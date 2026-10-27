@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { PRODUCTS_DATA, CATEGORIES } from './data/products';
-import { Product, ProductVariant, CartItem } from './types';
+import { INITIAL_ORDERS, INITIAL_COUPONS, INITIAL_SETTINGS } from './data/initialOrders';
+import { Product, ProductVariant, CartItem, Order, OrderStatus, Coupon, StoreSettings } from './types';
 import { CountdownBanner } from './components/CountdownBanner';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -17,9 +18,51 @@ import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Toast } from './components/Toast';
-import { Search, Sparkles, Filter, ArrowUpDown } from 'lucide-react';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { Search, Sparkles, Filter, ArrowUpDown, Megaphone } from 'lucide-react';
 
 export function App() {
+  // 1. Persistent Products Catalog (Managed via Admin Dashboard)
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('toolzaibd_products');
+      return saved ? JSON.parse(saved) : PRODUCTS_DATA;
+    } catch {
+      return PRODUCTS_DATA;
+    }
+  });
+
+  // 2. Persistent Orders List
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const saved = localStorage.getItem('toolzaibd_orders');
+      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    } catch {
+      return INITIAL_ORDERS;
+    }
+  });
+
+  // 3. Persistent Coupons List
+  const [coupons, setCoupons] = useState<Coupon[]>(() => {
+    try {
+      const saved = localStorage.getItem('toolzaibd_coupons');
+      return saved ? JSON.parse(saved) : INITIAL_COUPONS;
+    } catch {
+      return INITIAL_COUPONS;
+    }
+  });
+
+  // 4. Persistent Store Settings
+  const [settings, setSettings] = useState<StoreSettings>(() => {
+    try {
+      const saved = localStorage.getItem('toolzaibd_settings');
+      return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
+    } catch {
+      return INITIAL_SETTINGS;
+    }
+  });
+
+  // 5. Shopping Cart
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('toolzaibd_cart');
@@ -27,6 +70,11 @@ export function App() {
     } catch {
       return [];
     }
+  });
+
+  // 6. Navigation, Filters, Modals
+  const [isAdminView, setIsAdminView] = useState<boolean>(() => {
+    return window.location.hash === '#admin';
   });
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -43,6 +91,39 @@ export function App() {
 
   const productSectionRef = useRef<HTMLDivElement>(null);
 
+  // Sync state to LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('toolzaibd_products', JSON.stringify(products));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [products]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('toolzaibd_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('toolzaibd_coupons', JSON.stringify(coupons));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [coupons]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('toolzaibd_settings', JSON.stringify(settings));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [settings]);
+
   useEffect(() => {
     try {
       localStorage.setItem('toolzaibd_cart', JSON.stringify(cartItems));
@@ -51,13 +132,93 @@ export function App() {
     }
   }, [cartItems]);
 
+  // Sync hash routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsAdminView(window.location.hash === '#admin');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const openAdmin = () => {
+    window.location.hash = 'admin';
+    setIsAdminView(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const closeAdmin = () => {
+    window.location.hash = '';
+    setIsAdminView(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const scrollToProducts = () => {
     productSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Filtered and Sorted products calculation
+  // ================= ADMIN HANDLERS =================
+  const handleSaveProduct = (updatedProduct: Product) => {
+    setProducts((prev) => {
+      const idx = prev.findIndex((p) => p.id === updatedProduct.id);
+      if (idx > -1) {
+        const next = [...prev];
+        next[idx] = updatedProduct;
+        return next;
+      } else {
+        return [updatedProduct, ...prev];
+      }
+    });
+    setToastMessage(`Product "${updatedProduct.title}" saved successfully!`);
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setToastMessage('Product deleted from catalog.');
+  };
+
+  const handlePlaceOrder = (newOrder: Order) => {
+    setOrders((prev) => [newOrder, ...prev]);
+  };
+
+  const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+    );
+    setToastMessage(`Order #${orderId} marked as ${status}.`);
+  };
+
+  const handleUpdateOrderNotes = (orderId: string, notes: string) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, notes } : o))
+    );
+    setToastMessage(`Notes saved for order #${orderId}.`);
+  };
+
+  const handleAddCoupon = (coupon: Coupon) => {
+    setCoupons((prev) => [coupon, ...prev]);
+    setToastMessage(`Coupon "${coupon.code}" created!`);
+  };
+
+  const handleToggleCoupon = (id: string) => {
+    setCoupons((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c))
+    );
+  };
+
+  const handleDeleteCoupon = (id: string) => {
+    setCoupons((prev) => prev.filter((c) => c.id !== id));
+    setToastMessage('Coupon deleted.');
+  };
+
+  const handleSaveSettings = (newSettings: StoreSettings) => {
+    setSettings(newSettings);
+    setToastMessage('Store settings saved successfully!');
+  };
+
+  // ================= STOREFRONT FILTERING =================
   const filteredProducts = useMemo(() => {
-    const list = PRODUCTS_DATA.filter((product) => {
+    const list = products.filter((product) => {
       const matchesCategory =
         selectedCategory === 'all' || product.category === selectedCategory;
 
@@ -93,10 +254,9 @@ export function App() {
     if (sortBy === 'discount') {
       return [...list].sort((a, b) => (b.discountPercent || 0) - (a.discountPercent || 0));
     }
-    return list; // default original sequence
-  }, [selectedCategory, searchQuery, sortBy]);
+    return list;
+  }, [products, selectedCategory, searchQuery, sortBy]);
 
-  // First 8 items and remaining items for "MOST POPULAR" divider
   const isDefaultView = selectedCategory === 'all' && !searchQuery && sortBy === 'featured';
   const topEight = isDefaultView ? filteredProducts.slice(0, 8) : filteredProducts;
   const popularRemaining = isDefaultView ? filteredProducts.slice(8) : [];
@@ -155,9 +315,42 @@ export function App() {
 
   const totalCartCount = cartItems.reduce((acc, it) => acc + it.quantity, 0);
 
+  // ================= ADMIN DASHBOARD RENDER =================
+  if (isAdminView) {
+    return (
+      <>
+        <AdminDashboard
+          products={products}
+          onSaveProduct={handleSaveProduct}
+          onDeleteProduct={handleDeleteProduct}
+          orders={orders}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onUpdateOrderNotes={handleUpdateOrderNotes}
+          coupons={coupons}
+          onAddCoupon={handleAddCoupon}
+          onToggleCoupon={handleToggleCoupon}
+          onDeleteCoupon={handleDeleteCoupon}
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onCloseAdmin={closeAdmin}
+        />
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      </>
+    );
+  }
+
+  // ================= LIVE STOREFRONT RENDER =================
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans pb-16 md:pb-0">
       
+      {/* Optional Store Announcement Banner */}
+      {settings.isNoticeActive && settings.announcementNotice && (
+        <div className="bg-[#E6FCED] border-b border-[#86EFAC] text-[#15803D] text-[11px] sm:text-xs py-1.5 px-4 text-center font-bold flex items-center justify-center gap-1.5 shadow-sm">
+          <Megaphone className="w-3.5 h-3.5 text-[#00C853] flex-shrink-0 animate-bounce" />
+          <span>{settings.announcementNotice}</span>
+        </div>
+      )}
+
       {/* 1. Top Navigation Bar (Woodmart Style) */}
       <Header
         cartCount={totalCartCount}
@@ -168,6 +361,7 @@ export function App() {
         onSelectCategory={setSelectedCategory}
         onSelectProduct={(p) => setActiveModalProduct(p)}
         onOpenTrackOrder={() => setIsTrackOrderOpen(true)}
+        onOpenAdmin={openAdmin}
       />
 
       {/* 2. Hero Section */}
@@ -213,9 +407,9 @@ export function App() {
         {(searchQuery || selectedCategory !== 'all') && (
           <div className="flex items-center gap-2 mb-6 p-2.5 rounded-xl bg-white border border-[#E2E8F0] text-xs shadow-sm">
             <Filter className="w-4 h-4 text-[#00C853]" />
-            <span className="text-gray-500">Active Filter:</span>
+            <span className="text-slate-500">Active Filter:</span>
             {selectedCategory !== 'all' && (
-              <span className="bg-[#E6FCED] text-[#00C853] px-2 py-0.5 rounded font-bold border border-[#BBF7D0]">
+              <span className="bg-[#E6FCED] text-[#15803D] px-2 py-0.5 rounded font-bold border border-[#86EFAC]">
                 {CATEGORIES.find((c) => c.id === selectedCategory)?.label}
               </span>
             )}
@@ -229,19 +423,19 @@ export function App() {
                 setSelectedCategory('all');
                 setSearchQuery('');
               }}
-              className="ml-auto text-gray-500 hover:text-black underline text-xs"
+              className="ml-auto text-slate-500 hover:text-black underline text-xs"
             >
               Reset
             </button>
           </div>
         )}
 
-        {/* Products Grid: Part 1 (First 8 Products) */}
+        {/* Products Grid: Part 1 */}
         {filteredProducts.length === 0 ? (
           <div className="py-16 text-center space-y-3 bg-white rounded-2xl border border-[#E2E8F0] p-8 shadow-sm">
-            <Search className="w-10 h-10 text-gray-400 mx-auto" />
+            <Search className="w-10 h-10 text-slate-400 mx-auto" />
             <h3 className="font-bold text-base text-[#0F172A]">No products found</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               No digital subscriptions matched your search. Try "Microsoft", "Canva", "AI", or reset filters.
             </p>
             <button
@@ -251,7 +445,7 @@ export function App() {
               }}
               className="bg-[#00C853] text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md"
             >
-              View All 26 Products
+              View All Products
             </button>
           </div>
         ) : (
@@ -268,7 +462,7 @@ export function App() {
               ))}
             </div>
 
-            {/* "MOST POPULAR" Centered Divider (Exactly as seen in MixProBD screenshot!) */}
+            {/* "MOST POPULAR" Centered Divider */}
             {isDefaultView && popularRemaining.length > 0 && (
               <div className="w-full flex items-center justify-center my-8 sm:my-10 relative">
                 <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-gradient-to-r from-transparent via-[#86EFAC]/80 to-transparent pointer-events-none" />
@@ -281,7 +475,7 @@ export function App() {
               </div>
             )}
 
-            {/* Products Grid: Part 2 (Remaining Products) */}
+            {/* Products Grid: Part 2 */}
             {isDefaultView && popularRemaining.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
                 {popularRemaining.map((product) => (
@@ -310,10 +504,13 @@ export function App() {
       <FAQSection />
 
       {/* 7. Footer */}
-      <Footer onSelectCategory={(cat) => {
-        setSelectedCategory(cat);
-        scrollToProducts();
-      }} />
+      <Footer
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          scrollToProducts();
+        }}
+        onOpenAdmin={openAdmin}
+      />
 
       {/* 8. Woodmart Mobile Sticky Bottom Navigation Bar */}
       <MobileBottomNav
@@ -333,11 +530,12 @@ export function App() {
         }}
       />
 
-      {/* Quick Order Popup Modal (Exact MixProBD instant checkout!) */}
+      {/* Quick Order Popup Modal */}
       <QuickOrderModal
         product={quickOrderProduct}
         onClose={() => setQuickOrderProduct(null)}
         onOrderSuccess={(msg) => setToastMessage(msg)}
+        onPlaceOrder={handlePlaceOrder}
       />
 
       {/* Product Details & Specs Modal */}
@@ -365,6 +563,7 @@ export function App() {
         discountAmount={checkoutDiscount}
         couponCode={checkoutCoupon}
         onOrderSuccess={() => setToastMessage('Order received! Redirecting to WhatsApp...')}
+        onPlaceOrder={handlePlaceOrder}
       />
 
       {/* Order Tracking Modal */}

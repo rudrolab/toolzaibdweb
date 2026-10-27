@@ -4,9 +4,10 @@ import { WHATSAPP_URL, BANGLADESH_PAYMENTS } from '../data/products';
 
 interface FooterProps {
   onSelectCategory: (cat: string) => void;
+  onOpenAdmin?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onSelectCategory }) => {
+export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin }) => {
   return (
     <footer className="bg-white border-t border-[#E2E8F0] text-slate-600 text-xs pt-14 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -118,10 +119,20 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory }) => {
           <div>
             © {new Date().getFullYear()} ToolzAi BD. All rights reserved. Authentic Digital Accounts & Software Subscriptions in Bangladesh.
           </div>
-          <div className="flex items-center gap-1 font-medium">
-            <span>Crafted with</span>
-            <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-            <span>for Bangladeshi Digital Creators</span>
+          <div className="flex items-center gap-4">
+            {onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                className="text-slate-400 hover:text-[#00C853] font-semibold underline transition-colors"
+              >
+                Admin Management Console
+              </button>
+            )}
+            <div className="flex items-center gap-1 font-medium">
+              <span>Crafted with</span>
+              <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+              <span>for Bangladeshi Digital Creators</span>
+            </div>
           </div>
         </div>
 
