@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Edit3 } from 'lucide-react';
 import { Product } from '../types';
 import { ProductCardBanner } from './ProductCardBanner';
 
@@ -7,6 +8,8 @@ interface ProductCardProps {
   onSelectProduct: (p: Product) => void;
   onQuickOrder: (p: Product) => void;
   showInstantPill?: boolean;
+  quickEditMode?: boolean;
+  onQuickEdit?: (p: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -14,6 +17,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onSelectProduct,
   onQuickOrder,
   showInstantPill = false,
+  quickEditMode = false,
+  onQuickEdit,
 }) => {
   const [imgError, setImgError] = useState(false);
 
@@ -26,6 +31,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div className="product-grid-item group flex flex-col justify-between bg-white rounded-2xl border-[1.5px] border-[#E2E8F0] p-2.5 sm:p-3 hover:-translate-y-1.5 hover:border-[#00C853] hover:shadow-[0_16px_30px_-8px_rgba(0,200,83,0.22),0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden h-full">
       
+      {/* Quick Edit Floating Action Button */}
+      {quickEditMode && onQuickEdit && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickEdit(product);
+          }}
+          className="absolute top-2 right-2 z-20 bg-slate-900/95 hover:bg-emerald-600 text-white font-extrabold text-[10.5px] px-2.5 py-1 rounded-lg shadow-xl flex items-center gap-1 border border-slate-700 hover:border-emerald-400 transition-all hover:scale-105 active:scale-95"
+          title="Edit this product directly"
+        >
+          <Edit3 className="w-3 h-3 text-emerald-400" />
+          <span>Edit</span>
+        </button>
+      )}
+
       {/* 1:1 Aspect Ratio Image Container (Woodmart .product-element-top) */}
       <div
         onClick={() => onSelectProduct(product)}

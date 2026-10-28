@@ -21,8 +21,29 @@ import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Toast } from './components/Toast';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
+import { AdminQuickBar } from './components/admin/AdminQuickBar';
+import { ProductFormModal } from './components/admin/ProductFormModal';
+import { LandingPageFormModal } from './components/admin/LandingPageFormModal';
 import { LandingPageView } from './components/landing/LandingPageView';
 import { Search, Sparkles, Filter, ArrowUpDown, Megaphone, Flame } from 'lucide-react';
+import {
+  getSupabase,
+  fetchCloudProducts,
+  fetchCloudOrders,
+  fetchCloudCoupons,
+  fetchCloudLandingPages,
+  fetchCloudSettings,
+  upsertCloudProduct,
+  deleteCloudProduct,
+  insertCloudOrder,
+  updateCloudOrderStatus,
+  updateCloudOrderNotes,
+  upsertCloudCoupon,
+  deleteCloudCoupon,
+  upsertCloudLandingPage,
+  deleteCloudLandingPage,
+  saveCloudSettings
+} from './services/supabase';
 
 export function App() {
   // 1. Persistent Products Catalog (Managed via Admin Dashboard)
@@ -120,6 +141,13 @@ export function App() {
   });
   const [activeLandingSlug, setActiveLandingSlug] = useState<string | null>(() => getLandingSlug());
 
+  // Storefront Quick-Edit & Cloud Sync states
+  const [quickEditMode, setQuickEditMode] = useState<boolean>(false);
+  const [editingStoreProduct, setEditingStoreProduct] = useState<Product | null>(null);
+  const [isStoreProductModalOpen, setIsStoreProductModalOpen] = useState<boolean>(false);
+  const [isStoreLandingModalOpen, setIsStoreLandingModalOpen] = useState<boolean>(false);
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('featured');
@@ -197,6 +225,39 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isAdminAuthenticated]);
 
+  // Cloud Database Sync on Mount
+  useEffect(() => {
+    const syncFromCloud = async () => {
+      const sb = getSupabase();
+      if (!sb) {
+        setIsCloudConnected(false);
+        return;
+      }
+
+      setIsCloudConnected(true);
+
+      try {
+        const [cloudProducts, cloudOrders, cloudCoupons, cloudLandingPages, cloudSettings] = await Promise.all([
+          fetchCloudProducts(),
+          fetchCloudOrders(),
+          fetchCloudCoupons(),
+          fetchCloudLandingPages(),
+          fetchCloudSettings()
+        ]);
+
+        if (cloudProducts && cloudProducts.length > 0) setProducts(cloudProducts);
+        if (cloudOrders && cloudOrders.length > 0) setOrders(cloudOrders);
+        if (cloudCoupons && cloudCoupons.length > 0) setCoupons(cloudCoupons);
+        if (cloudLandingPages && cloudLandingPages.length > 0) setLandingPages(cloudLandingPages);
+        if (cloudSettings) setSettings(cloudSettings);
+      } catch (err) {
+        console.error('Cloud sync error:', err);
+      }
+    };
+
+    syncFromCloud();
+  }, []);
+
   const openAdmin = () => {
     window.location.hash = 'admin';
     setIsAdminView(true);
@@ -224,6 +285,7 @@ export function App() {
     setIsAdminAuthenticated(false);
     setIsAdminView(false);
     setIsAdminLoginOpen(false);
+    setQuickEditMode(false);
     window.location.hash = '';
     setToastMessage('অ্যাডমিন ড্যাশবোর্ড থেকে সফলভাবে লগআউট হয়েছে।');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -240,7 +302,7 @@ export function App() {
     productSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // ================= ADMIN HANDLERS =================
+  // ================= ADMIN HANDLERS (WITH SUPABASE REALTIME SYNC) =================
   const handleSaveProduct = (updatedProduct: Product) => {
     setProducts((prev) => {
       const idx = prev.findIndex((p) => p.id === updatedProduct.id);
@@ -252,11 +314,13 @@ export function App() {
         return [updatedProduct, ...prev];
       }
     });
+    upsertCloudProduct(updatedProduct).catch(console.error);
     setToastMessage(`Product "${updatedProduct.title}" saved successfully!`);
   };
 
   const handleDeleteProduct = (productId: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
+    deleteCloudProduct(productId).catch(console.error);
     setToastMessage('Product deleted from catalog.');
   };
 
@@ -271,22 +335,26 @@ export function App() {
         return [page, ...prev];
       }
     });
+    upsertCloudLandingPage(page).catch(console.error);
     setToastMessage(`Campaign "${page.title}" saved successfully!`);
   };
 
   const handleDeleteLandingPage = (pageId: string) => {
     setLandingPages((prev) => prev.filter((p) => p.id !== pageId));
+    deleteCloudLandingPage(pageId).catch(console.error);
     setToastMessage('Campaign deleted.');
   };
 
   const handlePlaceOrder = (newOrder: Order) => {
     setOrders((prev) => [newOrder, ...prev]);
+    insertCloudOrder(newOrder).catch(console.error);
   };
 
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status } : o))
     );
+    updateCloudOrderStatus(orderId, status).catch(console.error);
     setToastMessage(`Order #${orderId} marked as ${status}.`);
   };
 
@@ -294,28 +362,74 @@ export function App() {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, notes } : o))
     );
+    updateCloudOrderNotes(orderId, notes).catch(console.error);
     setToastMessage(`Notes saved for order #${orderId}.`);
   };
 
   const handleAddCoupon = (coupon: Coupon) => {
     setCoupons((prev) => [coupon, ...prev]);
+    upsertCloudCoupon(coupon).catch(console.error);
     setToastMessage(`Coupon "${coupon.code}" created!`);
   };
 
   const handleToggleCoupon = (id: string) => {
-    setCoupons((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c))
-    );
+    setCoupons((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c));
+      const target = next.find((c) => c.id === id);
+      if (target) upsertCloudCoupon(target).catch(console.error);
+      return next;
+    });
   };
 
   const handleDeleteCoupon = (id: string) => {
     setCoupons((prev) => prev.filter((c) => c.id !== id));
+    deleteCloudCoupon(id).catch(console.error);
     setToastMessage('Coupon deleted.');
   };
 
   const handleSaveSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
+    saveCloudSettings(newSettings).catch(console.error);
     setToastMessage('Store settings saved successfully!');
+  };
+
+  // ================= BACKUP & RESTORE =================
+  const handleExportStoreBackup = () => {
+    const backupData = {
+      version: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      products,
+      orders,
+      coupons,
+      landingPages,
+      settings
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `toolzaibd_store_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setToastMessage('Store backup file downloaded!');
+  };
+
+  const handleImportBackup = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.products && Array.isArray(data.products)) setProducts(data.products);
+        if (data.orders && Array.isArray(data.orders)) setOrders(data.orders);
+        if (data.coupons && Array.isArray(data.coupons)) setCoupons(data.coupons);
+        if (data.landingPages && Array.isArray(data.landingPages)) setLandingPages(data.landingPages);
+        if (data.settings) setSettings(data.settings);
+        setToastMessage('Backup restored successfully!');
+      } catch (err) {
+        alert('Invalid backup JSON file.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   // ================= STOREFRONT FILTERING =================
@@ -489,6 +603,24 @@ export function App() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans pb-16 md:pb-0">
       
+      {/* Admin Quick Bar (Displayed when admin is logged in) */}
+      {isAdminAuthenticated && (
+        <AdminQuickBar
+          isCloudConnected={isCloudConnected}
+          quickEditMode={quickEditMode}
+          onToggleQuickEdit={() => setQuickEditMode(!quickEditMode)}
+          onOpenAddProduct={() => {
+            setEditingStoreProduct(null);
+            setIsStoreProductModalOpen(true);
+          }}
+          onOpenAddLandingPage={() => setIsStoreLandingModalOpen(true)}
+          onOpenDashboard={openAdmin}
+          onExportBackup={handleExportStoreBackup}
+          onImportBackup={handleImportBackup}
+          onLogout={handleAdminLogout}
+        />
+      )}
+
       {/* Optional Store Announcement Banner */}
       {settings.isNoticeActive && settings.announcementNotice && (
         <div className="bg-[#E6FCED] border-b border-[#86EFAC] text-[#15803D] text-[11px] sm:text-xs py-1.5 px-4 text-center font-bold flex items-center justify-center gap-1.5 shadow-sm">
@@ -626,6 +758,11 @@ export function App() {
                   onSelectProduct={(p) => setActiveModalProduct(p)}
                   onQuickOrder={(p) => setQuickOrderProduct(p)}
                   showInstantPill={true}
+                  quickEditMode={quickEditMode}
+                  onQuickEdit={(p) => {
+                    setEditingStoreProduct(p);
+                    setIsStoreProductModalOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -653,6 +790,11 @@ export function App() {
                     onSelectProduct={(p) => setActiveModalProduct(p)}
                     onQuickOrder={(p) => setQuickOrderProduct(p)}
                     showInstantPill={false}
+                    quickEditMode={quickEditMode}
+                    onQuickEdit={(p) => {
+                      setEditingStoreProduct(p);
+                      setIsStoreProductModalOpen(true);
+                    }}
                   />
                 ))}
               </div>
@@ -755,6 +897,32 @@ export function App() {
           setToastMessage('অ্যাডমিন ভেরিফিকেশন সফল হয়েছে!');
         }}
         adminPasswordHash={settings.adminPasswordHash}
+      />
+
+      {/* Storefront In-Line Quick Edit Product Modal */}
+      <ProductFormModal
+        isOpen={isStoreProductModalOpen}
+        onClose={() => {
+          setIsStoreProductModalOpen(false);
+          setEditingStoreProduct(null);
+        }}
+        productToEdit={editingStoreProduct}
+        onSave={(saved) => {
+          handleSaveProduct(saved);
+          setIsStoreProductModalOpen(false);
+          setEditingStoreProduct(null);
+        }}
+      />
+
+      {/* Storefront Quick Add Landing Page Modal */}
+      <LandingPageFormModal
+        isOpen={isStoreLandingModalOpen}
+        onClose={() => setIsStoreLandingModalOpen(false)}
+        landingPageToEdit={null}
+        onSave={(saved) => {
+          handleSaveLandingPage(saved);
+          setIsStoreLandingModalOpen(false);
+        }}
       />
 
       {/* Sticky WhatsApp Floater (Desktop/Tablet) */}

@@ -23,7 +23,10 @@ import {
   ExternalLink,
   LogOut,
   Shield,
-  Key
+  Key,
+  Database,
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { Product, Order, OrderStatus, Coupon, StoreSettings, LandingPage } from '../../types';
 import { ProductFormModal } from './ProductFormModal';
@@ -31,6 +34,12 @@ import { OrderDetailsModal } from './OrderDetailsModal';
 import { LandingPageFormModal } from './LandingPageFormModal';
 import { Icon } from '../Icon';
 import { hashPassword } from '../../utils/security';
+import {
+  saveSupabaseConfig,
+  testSupabaseConnection,
+  seedCloudDatabase,
+  getStoredSupabaseConfig
+} from '../../services/supabase';
 
 interface AdminDashboardProps {
   products: Product[];
@@ -287,6 +296,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setConfirmPasswordInput('');
     setPasswordStatusMsg({ type: 'success', text: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!' });
     setTimeout(() => setPasswordStatusMsg(null), 4000);
+  };
+
+  // Supabase Cloud Configuration State
+  const initialSupabaseConfig = getStoredSupabaseConfig();
+  const [supabaseUrl, setSupabaseUrl] = useState(settings.supabaseUrl || initialSupabaseConfig?.url || '');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(settings.supabaseAnonKey || initialSupabaseConfig?.anonKey || '');
+  const [cloudConnectStatus, setCloudConnectStatus] = useState<{ testing: boolean; message?: string; success?: boolean } | null>(null);
+  const [isSeedingCloud, setIsSeedingCloud] = useState(false);
+
+  const handleTestAndConnectSupabase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabaseUrl.trim() || !supabaseAnonKey.trim()) {
+      setCloudConnectStatus({ testing: false, success: false, message: 'Supabase URL এবং Anon Key উভয়টি পূরণ করুন।' });
+      return;
+    }
+
+    setCloudConnectStatus({ testing: true, message: 'Supabase সংযোগ পরীক্ষা করা হচ্ছে...' });
+    const result = await testSupabaseConnection(supabaseUrl.trim(), supabaseAnonKey.trim());
+    if (result.success) {
+      saveSupabaseConfig(supabaseUrl.trim(), supabaseAnonKey.trim());
+      onSaveSettings({
+        ...settings,
+        supabaseUrl: supabaseUrl.trim(),
+        supabaseAnonKey: supabaseAnonKey.trim()
+      });
+      setCloudConnectStatus({ testing: false, success: true, message: result.message });
+    } else {
+      setCloudConnectStatus({ testing: false, success: false, message: result.message });
+    }
+  };
+
+  const handleSeedCatalogToSupabase = async () => {
+    if (!confirm('আপনি কি বর্তমান সব প্রোডাক্ট, কুপন ও সেটিংস Supabase ক্লাউডে আপলোড করতে চান?')) return;
+    setIsSeedingCloud(true);
+    const result = await seedCloudDatabase(products, coupons, landingPages, settings);
+    setIsSeedingCloud(false);
+    alert(result.message);
+  };
+
+  const handleExportStoreBackup = () => {
+    const backupData = {
+      version: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      products,
+      orders,
+      coupons,
+      landingPages,
+      settings
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `toolzaibd_store_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -1444,6 +1509,141 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+
+            {/* Supabase Cloud Database Real-time Sync Card */}
+            <div className="bg-white border border-[#CBD5E1] rounded-2xl p-5 sm:p-6 shadow-sm mt-6">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-black text-base text-[#0F172A] flex items-center gap-2">
+                      Supabase Cloud Database (রিয়েল-টাইম ক্লাউড সিঙ্ক)
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Connect your 100% free Supabase project to sync products, orders, and edits live across all visitors
+                    </p>
+                  </div>
+                </div>
+
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 ${
+                  initialSupabaseConfig?.url
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${initialSupabaseConfig?.url ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                  {initialSupabaseConfig?.url ? 'Cloud Connected' : 'Local Storage Mode'}
+                </span>
+              </div>
+
+              {cloudConnectStatus && (
+                <div
+                  className={`mb-4 p-3 rounded-xl text-xs flex items-center gap-2 ${
+                    cloudConnectStatus.success
+                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                      : 'bg-amber-50 border border-amber-200 text-amber-800'
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{cloudConnectStatus.message}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleTestAndConnectSupabase} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Supabase Project URL
+                    </label>
+                    <input
+                      type="text"
+                      value={supabaseUrl}
+                      onChange={(e) => setSupabaseUrl(e.target.value)}
+                      placeholder="https://xyzcompany.supabase.co"
+                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Supabase Anon Public Key
+                    </label>
+                    <input
+                      type="password"
+                      value={supabaseAnonKey}
+                      onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    💡 <strong>Tip:</strong> Supabase ড্যাশবোর্ডে <strong>SQL Editor</strong>-এ গিয়ে আমাদের প্রোভাইড করা <code className="bg-white px-1.5 py-0.5 rounded border font-mono font-bold">supabase-schema.sql</code> রান করুন।
+                  </span>
+                  <a
+                    href="https://supabase.com/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-700 hover:text-emerald-800 font-bold underline inline-flex items-center gap-1"
+                  >
+                    Open Supabase Dashboard <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSeedCatalogToSupabase}
+                    disabled={isSeedingCloud}
+                    className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isSeedingCloud ? 'animate-spin' : ''}`} />
+                    <span>{isSeedingCloud ? 'আপলোড হচ্ছে...' : 'সব প্রোডাক্ট ও ক্যাম্পেইন Supabase-এ সিড করুন (Upload All)'}</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 bg-[#00C853] hover:bg-[#00B248] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all active:scale-95"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                    <span>Save & Connect Cloud</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* 1-Click Store Backup & Restore Card */}
+            <div className="bg-white border border-[#CBD5E1] rounded-2xl p-5 sm:p-6 shadow-sm mt-6">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#E2E8F0]">
+                <Download className="w-5 h-5 text-cyan-600" />
+                <div>
+                  <h3 className="font-heading font-black text-base text-[#0F172A]">
+                    Store Backup & Restore (সম্পূর্ণ সাইট ব্যাকআপ ও রিস্টোর)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Export your entire store catalog, orders, and landing pages as a JSON file or restore anytime
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <span className="text-xs text-slate-600">
+                  Total Items: <strong>{products.length} Products</strong>, <strong>{orders.length} Orders</strong>, <strong>{landingPages.length} Landing Pages</strong>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleExportStoreBackup}
+                  className="flex items-center gap-1.5 bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all active:scale-95"
+                >
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  <span>Download Store Backup (.JSON)</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

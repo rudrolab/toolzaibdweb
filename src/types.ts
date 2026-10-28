@@ -89,6 +89,8 @@ export interface StoreSettings {
   announcementNotice: string;
   isNoticeActive: boolean;
   adminPasswordHash?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 }
 
 export interface LandingPageFeature {
