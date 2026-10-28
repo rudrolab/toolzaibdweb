@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Copy, Zap, MessageCircle } from 'lucide-react';
+import { X, Check, Copy, Zap, MessageCircle, AlertCircle } from 'lucide-react';
 import { Product, ProductVariant, Order } from '../types';
 import { BANGLADESH_PAYMENTS, WHATSAPP_URL } from '../data/products';
 import { ProductCardBanner } from './ProductCardBanner';
+import {
+  sanitizeInput,
+  isValidBDPhone,
+  isValidEmail,
+  isValidTrxId,
+  isSpamSubmission,
+  checkRateLimit
+} from '../utils/security';
 
 interface QuickOrderModalProps {
   product: Product | null;
@@ -30,6 +38,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [honeypot, setHoneypot] = useState('');
 
   useEffect(() => {
     if (product?.variants && product.variants.length > 0) {
@@ -83,12 +92,46 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerPhone.trim()) {
-      setErrorMsg('Please enter your WhatsApp phone number.');
+    setErrorMsg('');
+
+    // 1. Anti-bot honeypot check
+    if (isSpamSubmission(honeypot)) {
       return;
     }
-    if (!customerEmail.trim()) {
-      setErrorMsg('Please enter your email for delivery.');
+
+    // 2. Submission rate limiting
+    const rateCheck = checkRateLimit('quick_order_submission', 3000);
+    if (!rateCheck.allowed) {
+      setErrorMsg(`অপেক্ষা করুন, আরও ${rateCheck.waitSeconds} সেকেন্ড পর চেষ্টা করুন।`);
+      return;
+    }
+
+    // 3. Input Sanitization
+    const cleanName = sanitizeInput(customerName);
+    const cleanPhone = sanitizeInput(customerPhone);
+    const cleanEmail = sanitizeInput(customerEmail);
+    const cleanSender = sanitizeInput(senderNumber);
+    const cleanTrx = sanitizeInput(trxId);
+
+    // 4. Strict Validation
+    if (!cleanPhone) {
+      setErrorMsg('অনুগ্রহ করে আপনার হোয়াটসঅ্যাপ মোবাইল নম্বর প্রদান করুন।');
+      return;
+    }
+    if (!isValidBDPhone(cleanPhone)) {
+      setErrorMsg('অনুগ্রহ করে সঠিক ১১-সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)।');
+      return;
+    }
+    if (!cleanEmail) {
+      setErrorMsg('অনুগ্রহ করে ডিজিটাল ডেলিভারির জন্য আপনার ইমেইল প্রদান করুন।');
+      return;
+    }
+    if (!isValidEmail(cleanEmail)) {
+      setErrorMsg('অনুগ্রহ করে একটি সঠিক ইমেইল অ্যাড্রেস লিখুন (যেমন: yourname@gmail.com)।');
+      return;
+    }
+    if (cleanTrx && !isValidTrxId(cleanTrx)) {
+      setErrorMsg('ট্রানজেকশন আইডি (TrxID) ইংরেজি অক্ষর ও সংখ্যা হতে হবে (৬-২০ অক্ষর)।');
       return;
     }
 
@@ -102,20 +145,20 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       `Total Payable: ${formatPrice(finalTotal)}\n` +
       (discount > 0 ? `Coupon Discount: -${formatPrice(discount)}\n` : '') +
       `\nCustomer Details:\n` +
-      `Name: ${customerName || 'Customer'}\n` +
-      `WhatsApp Phone: ${customerPhone}\n` +
-      `Delivery Email: ${customerEmail}\n\n` +
+      `Name: ${cleanName || 'Customer'}\n` +
+      `WhatsApp Phone: ${cleanPhone}\n` +
+      `Delivery Email: ${cleanEmail}\n\n` +
       `Payment: ${activeMethod.name} Send Money\n` +
-      (senderNumber ? `Sender Number: ${senderNumber}\n` : '') +
-      (trxId ? `Transaction ID: ${trxId}\n` : '') +
+      (cleanSender ? `Sender Number: ${cleanSender}\n` : '') +
+      (cleanTrx ? `Transaction ID: ${cleanTrx}\n` : '') +
       `\nPlease verify and deliver digital credentials instantly.`
     );
 
     const newOrder: Order = {
       id: orderId,
-      customerName: customerName || 'Customer',
-      customerPhone,
-      customerEmail,
+      customerName: cleanName || 'Customer',
+      customerPhone: cleanPhone,
+      customerEmail: cleanEmail,
       items: [
         {
           productId: product.id,
@@ -129,8 +172,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       discount,
       total: finalTotal,
       paymentMethod: activeMethod.name,
-      senderNumber: senderNumber || undefined,
-      trxId: trxId || undefined,
+      senderNumber: cleanSender || undefined,
+      trxId: cleanTrx || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
@@ -143,7 +186,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     onOrderSuccess(`Order #${orderId} placed successfully!`);
 
     setTimeout(() => {
-      window.open(`${WHATSAPP_URL}?text=${message}`, '_blank');
+      window.open(`${WHATSAPP_URL}?text=${message}`, '_blank', 'noopener,noreferrer');
     }, 1200);
   };
 
@@ -215,6 +258,25 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
             {/* Scrollable Form Body */}
             <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              
+              {/* Invisible honeypot for anti-bot protection */}
+              <input
+                type="text"
+                name="website_url_hp"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                style={{ display: 'none', opacity: 0, position: 'absolute', left: '-9999px' }}
+                aria-hidden="true"
+              />
+
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
               
               {/* Variation Chips (MixProBD style: .mixpro-variation-chip) */}
               {product.hasVariants && product.variants && product.variants.length > 0 && (

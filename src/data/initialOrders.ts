@@ -164,5 +164,6 @@ export const INITIAL_SETTINGS: StoreSettings = {
   nagadNumber: '01886822838',
   rocketNumber: '01886822838',
   announcementNotice: '⚡ Instant 5-15 minute delivery operational. bKash & Nagad payments verified 24/7.',
-  isNoticeActive: true
+  isNoticeActive: true,
+  adminPasswordHash: 'toolzadmin2026'
 };

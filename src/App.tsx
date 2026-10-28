@@ -20,6 +20,7 @@ import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Toast } from './components/Toast';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import { LandingPageView } from './components/landing/LandingPageView';
 import { Search, Sparkles, Filter, ArrowUpDown, Megaphone, Flame } from 'lucide-react';
 
@@ -96,9 +97,26 @@ export function App() {
     return null;
   };
 
-  // 7. Navigation, Filters, Modals
+  // 7. Navigation, Filters, Modals & Admin Security
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    try {
+      const auth = sessionStorage.getItem('toolzaibd_admin_auth');
+      const authTime = sessionStorage.getItem('toolzaibd_admin_auth_time');
+      if (auth === 'true' && authTime) {
+        const elapsed = Date.now() - parseInt(authTime, 10);
+        return elapsed < 2 * 60 * 60 * 1000; // 2 hours session expiry
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
   const [isAdminView, setIsAdminView] = useState<boolean>(() => {
     return window.location.hash === '#admin';
+  });
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState<boolean>(() => {
+    return window.location.hash === '#admin' && !isAdminAuthenticated;
   });
   const [activeLandingSlug, setActiveLandingSlug] = useState<string | null>(() => getLandingSlug());
 
@@ -165,26 +183,49 @@ export function App() {
     }
   }, [cartItems]);
 
-  // Sync hash routing
+  // Sync hash routing & Security Verification
   useEffect(() => {
     const handleHashChange = () => {
-      setIsAdminView(window.location.hash === '#admin');
+      const isHashAdmin = window.location.hash === '#admin';
+      setIsAdminView(isHashAdmin);
+      if (isHashAdmin && !isAdminAuthenticated) {
+        setIsAdminLoginOpen(true);
+      }
       setActiveLandingSlug(getLandingSlug());
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [isAdminAuthenticated]);
 
   const openAdmin = () => {
     window.location.hash = 'admin';
     setIsAdminView(true);
     setActiveLandingSlug(null);
+    if (!isAdminAuthenticated) {
+      setIsAdminLoginOpen(true);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const closeAdmin = () => {
     window.location.hash = '';
     setIsAdminView(false);
+    setIsAdminLoginOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAdminLogout = () => {
+    try {
+      sessionStorage.removeItem('toolzaibd_admin_auth');
+      sessionStorage.removeItem('toolzaibd_admin_auth_time');
+    } catch (e) {
+      console.error(e);
+    }
+    setIsAdminAuthenticated(false);
+    setIsAdminView(false);
+    setIsAdminLoginOpen(false);
+    window.location.hash = '';
+    setToastMessage('অ্যাডমিন ড্যাশবোর্ড থেকে সফলভাবে লগআউট হয়েছে।');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -378,6 +419,24 @@ export function App() {
 
   // ================= ADMIN DASHBOARD RENDER =================
   if (isAdminView) {
+    if (!isAdminAuthenticated) {
+      return (
+        <>
+          <AdminLoginModal
+            isOpen={true}
+            onClose={closeAdmin}
+            onSuccess={() => {
+              setIsAdminAuthenticated(true);
+              setIsAdminLoginOpen(false);
+              setToastMessage('অ্যাডমিন ভেরিফিকেশন সফল হয়েছে!');
+            }}
+            adminPasswordHash={settings.adminPasswordHash}
+          />
+          <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+        </>
+      );
+    }
+
     return (
       <>
         <AdminDashboard
@@ -398,6 +457,7 @@ export function App() {
           onDeleteLandingPage={handleDeleteLandingPage}
           onViewLandingPage={handleViewLandingPage}
           onCloseAdmin={closeAdmin}
+          onLogout={handleAdminLogout}
         />
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       </>
@@ -674,10 +734,27 @@ export function App() {
         onPlaceOrder={handlePlaceOrder}
       />
 
-      {/* Order Tracking Modal */}
+      {/* Order Tracking Modal (With Privacy Protection & Two-Factor Verification) */}
       <OrderTrackingModal
         isOpen={isTrackOrderOpen}
         onClose={() => setIsTrackOrderOpen(false)}
+        orders={orders}
+      />
+
+      {/* Admin Login Modal (Triggered when accessing admin console) */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => {
+          setIsAdminLoginOpen(false);
+          closeAdmin();
+        }}
+        onSuccess={() => {
+          setIsAdminAuthenticated(true);
+          setIsAdminLoginOpen(false);
+          setIsAdminView(true);
+          setToastMessage('অ্যাডমিন ভেরিফিকেশন সফল হয়েছে!');
+        }}
+        adminPasswordHash={settings.adminPasswordHash}
       />
 
       {/* Sticky WhatsApp Floater (Desktop/Tablet) */}

@@ -88,6 +88,7 @@ export interface StoreSettings {
   rocketNumber: string;
   announcementNotice: string;
   isNoticeActive: boolean;
+  adminPasswordHash?: string;
 }
 
 export interface LandingPageFeature {

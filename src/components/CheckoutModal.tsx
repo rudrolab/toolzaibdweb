@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, Sparkles } from 'lucide-react';
+import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
 import { CartItem, Order } from '../types';
 import { BANGLADESH_PAYMENTS, WHATSAPP_URL } from '../data/products';
+import {
+  sanitizeInput,
+  isValidBDPhone,
+  isValidEmail,
+  isValidTrxId,
+  isSpamSubmission,
+  checkRateLimit
+} from '../utils/security';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -31,6 +39,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [honeypot, setHoneypot] = useState('');
 
   if (!isOpen) return null;
 
@@ -53,12 +62,44 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
-    if (!customerPhone.trim()) {
-      setErrorMsg('Please enter your WhatsApp phone number.');
+    // 1. Anti-bot honeypot check
+    if (isSpamSubmission(honeypot)) {
       return;
     }
-    if (!customerEmail.trim()) {
-      setErrorMsg('Please enter your email for digital delivery.');
+
+    // 2. Submission rate limiting
+    const rateCheck = checkRateLimit('checkout_order_submission', 3000);
+    if (!rateCheck.allowed) {
+      setErrorMsg(`অপেক্ষা করুন, আরও ${rateCheck.waitSeconds} সেকেন্ড পর চেষ্টা করুন।`);
+      return;
+    }
+
+    // 3. Input Sanitization
+    const cleanName = sanitizeInput(customerName);
+    const cleanPhone = sanitizeInput(customerPhone);
+    const cleanEmail = sanitizeInput(customerEmail);
+    const cleanSender = sanitizeInput(senderNumber);
+    const cleanTrx = sanitizeInput(trxId);
+
+    // 4. Strict Validation
+    if (!cleanPhone) {
+      setErrorMsg('অনুগ্রহ করে আপনার হোয়াটসঅ্যাপ মোবাইল নম্বর প্রদান করুন।');
+      return;
+    }
+    if (!isValidBDPhone(cleanPhone)) {
+      setErrorMsg('অনুগ্রহ করে সঠিক ১১-সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)।');
+      return;
+    }
+    if (!cleanEmail) {
+      setErrorMsg('অনুগ্রহ করে ডিজিটাল ডেলিভারির জন্য আপনার ইমেইল প্রদান করুন।');
+      return;
+    }
+    if (!isValidEmail(cleanEmail)) {
+      setErrorMsg('অনুগ্রহ করে একটি সঠিক ইমেইল অ্যাড্রেস লিখুন (যেমন: yourname@gmail.com)।');
+      return;
+    }
+    if (cleanTrx && !isValidTrxId(cleanTrx)) {
+      setErrorMsg('ট্রানজেকশন আইডি (TrxID) ইংরেজি অক্ষর ও সংখ্যা হতে হবে (৬-২০ অক্ষর)।');
       return;
     }
 
@@ -73,24 +114,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     const message = encodeURIComponent(
       `🎉 NEW ORDER SUBMITTED (#${orderId})\n\n` +
-      `Customer Name: ${customerName || 'Customer'}\n` +
-      `WhatsApp Phone: ${customerPhone}\n` +
-      `Delivery Email: ${customerEmail}\n\n` +
+      `Customer Name: ${cleanName || 'Customer'}\n` +
+      `WhatsApp Phone: ${cleanPhone}\n` +
+      `Delivery Email: ${cleanEmail}\n\n` +
       `ITEMS ORDERED:\n${itemsSummary}\n\n` +
       `Subtotal: ${formatPrice(rawSubtotal)}\n` +
       (discountAmount > 0 ? `Discount (${couponCode}): -${formatPrice(discountAmount)}\n` : '') +
       `Total Payable: ${formatPrice(finalTotal)}\n\n` +
       `Payment Method: ${activeMethod.name}\n` +
-      (senderNumber ? `Sender Number: ${senderNumber}\n` : '') +
-      (trxId ? `Transaction ID: ${trxId}\n` : '') +
+      (cleanSender ? `Sender Number: ${cleanSender}\n` : '') +
+      (cleanTrx ? `Transaction ID: ${cleanTrx}\n` : '') +
       `\nPlease verify payment and deliver the digital credentials.`
     );
 
     const newOrder: Order = {
       id: orderId,
-      customerName: customerName || 'Customer',
-      customerPhone,
-      customerEmail,
+      customerName: cleanName || 'Customer',
+      customerPhone: cleanPhone,
+      customerEmail: cleanEmail,
       items: cartItems.map((it) => ({
         productId: it.product.id,
         title: it.product.title,
@@ -102,8 +143,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       discount: discountAmount,
       total: finalTotal,
       paymentMethod: activeMethod.name,
-      senderNumber: senderNumber || undefined,
-      trxId: trxId || undefined,
+      senderNumber: cleanSender || undefined,
+      trxId: cleanTrx || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
@@ -117,7 +158,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     // Auto open WhatsApp with the formatted order invoice
     setTimeout(() => {
-      window.open(`${WHATSAPP_URL}?text=${message}`, '_blank');
+      window.open(`${WHATSAPP_URL}?text=${message}`, '_blank', 'noopener,noreferrer');
     }, 1200);
   };
 
@@ -206,6 +247,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <form onSubmit={handleSubmitOrder} className="p-6 space-y-5 max-h-[72vh] overflow-y-auto">
               
+              {/* Invisible honeypot field for anti-bot spam protection */}
+              <input
+                type="text"
+                name="website_url_hp"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                style={{ display: 'none', opacity: 0, position: 'absolute', left: '-9999px' }}
+                aria-hidden="true"
+              />
+
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
               {/* Order total preview */}
               <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
                 <div>

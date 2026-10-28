@@ -12,10 +12,18 @@ import {
   Minus,
   Check,
   Store,
-  LayoutDashboard
+  LayoutDashboard,
+  AlertCircle
 } from 'lucide-react';
 import { LandingPage, Order } from '../../types';
 import { WHATSAPP_URL } from '../../data/products';
+import {
+  sanitizeInput,
+  isValidBDPhone,
+  isValidEmail,
+  isSpamSubmission,
+  checkRateLimit
+} from '../../utils/security';
 
 interface LandingPageViewProps {
   landingPage: LandingPage;
@@ -62,6 +70,8 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [payStep, setPayStep] = useState(1);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [honeypot, setHoneypot] = useState('');
 
   const checkoutRef = useRef<HTMLDivElement>(null);
 
@@ -130,8 +140,36 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName.trim() || customerPhone.length < 11 || !customerEmail.includes('@')) {
-      alert('দয়া করে আপনার পুরো নাম, সঠিক ১১ ডিজিটের মোবাইল নম্বর এবং সঠিক জিমেইল এড্রেস লিখুন।');
+    setFormError(null);
+
+    // 1. Anti-bot honeypot check
+    if (isSpamSubmission(honeypot)) {
+      return;
+    }
+
+    // 2. Submission rate limiting
+    const rateCheck = checkRateLimit('landing_order_submission', 3000);
+    if (!rateCheck.allowed) {
+      setFormError(`অনুগ্রহ করে ${rateCheck.waitSeconds} সেকেন্ড অপেক্ষা করে আবার চেষ্টা করুন।`);
+      return;
+    }
+
+    // 3. Sanitization
+    const cleanName = sanitizeInput(customerName);
+    const cleanPhone = sanitizeInput(customerPhone);
+    const cleanEmail = sanitizeInput(customerEmail);
+
+    // 4. Validation
+    if (!cleanName) {
+      setFormError('দয়া করে আপনার পুরো নাম লিখুন।');
+      return;
+    }
+    if (!isValidBDPhone(cleanPhone)) {
+      setFormError('সঠিক ১১-সংখ্যার বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX)।');
+      return;
+    }
+    if (!isValidEmail(cleanEmail)) {
+      setFormError('সঠিক জিমেইল বা ইমেইল এড্রেস লিখুন (যেমন: example@gmail.com)।');
       return;
     }
 
@@ -143,9 +181,9 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
     const newOrder: Order = {
       id: orderId,
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      customerEmail: customerEmail.trim(),
+      customerName: cleanName,
+      customerPhone: cleanPhone,
+      customerEmail: cleanEmail,
       items: [
         {
           productId: landingPage.id,
@@ -178,12 +216,12 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
         `Product: ${landingPage.title}\n` +
         `Quantity: ${quantity}\n` +
         `Total Payable: ${formatPrice(finalTotal)}\n` +
-        `Customer: ${customerName}\n` +
-        `WhatsApp: ${customerPhone}\n` +
-        `Gmail: ${customerEmail}\n\n` +
+        `Customer: ${cleanName}\n` +
+        `WhatsApp: ${cleanPhone}\n` +
+        `Gmail: ${cleanEmail}\n\n` +
         `Please verify payment and dispatch activation link to Gmail.`
       );
-      window.open(`${WHATSAPP_URL}?text=${msg}`, '_blank');
+      window.open(`${WHATSAPP_URL}?text=${msg}`, '_blank', 'noopener,noreferrer');
       setIsSubmitting(false);
       setShowPayModal(false);
     }, 2400);
@@ -560,6 +598,25 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
             <form onSubmit={handleSubmitOrder} className="grid grid-cols-1 md:grid-cols-12 gap-6">
               
+              {/* Invisible honeypot for anti-bot spam defense */}
+              <input
+                type="text"
+                name="website_url_hp"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                style={{ display: 'none', opacity: 0, position: 'absolute', left: '-9999px' }}
+                aria-hidden="true"
+              />
+
+              {formError && (
+                <div className="md:col-span-12 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
               {/* Left Column: Customer Information */}
               <div className="md:col-span-6 space-y-4">
                 <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
