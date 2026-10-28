@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
-import { CartItem, Order } from '../types';
-import { BANGLADESH_PAYMENTS, WHATSAPP_URL } from '../data/products';
+import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, AlertCircle, ExternalLink } from 'lucide-react';
+import { CartItem, Order, StoreSettings } from '../types';
+import { getStorePaymentMethods, getWhatsAppUrl } from '../utils/paymentHelpers';
 import {
   sanitizeInput,
   isValidBDPhone,
@@ -19,6 +19,8 @@ interface CheckoutModalProps {
   couponCode: string;
   onOrderSuccess: () => void;
   onPlaceOrder?: (order: Order) => void;
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -29,15 +31,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   couponCode,
   onOrderSuccess,
   onPlaceOrder,
+  settings,
+  onOpenPolicy,
 }) => {
-  const [selectedPayment, setSelectedPayment] = useState(BANGLADESH_PAYMENTS[0].id);
+  const paymentMethods = getStorePaymentMethods(settings);
+  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0].id);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [senderNumber, setSenderNumber] = useState('');
   const [trxId, setTrxId] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedOrderId, setCopiedOrderId] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [completedOrderId, setCompletedOrderId] = useState('');
+  const [whatsappOrderUrl, setWhatsappOrderUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [honeypot, setHoneypot] = useState('');
 
@@ -50,12 +58,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
   };
 
-  const activeMethod = BANGLADESH_PAYMENTS.find((p) => p.id === selectedPayment) || BANGLADESH_PAYMENTS[0];
+  const activeMethod = paymentMethods.find((p) => p.id === selectedPayment) || paymentMethods[0];
 
   const handleCopyNumber = (num: string) => {
     navigator.clipboard.writeText(num);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyOrderId = (idText: string) => {
+    navigator.clipboard.writeText(idText);
+    setCopiedOrderId(true);
+    setTimeout(() => setCopiedOrderId(false), 2000);
   };
 
   const handleSubmitOrder = (e: React.FormEvent) => {
@@ -112,7 +126,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     const orderId = 'TZ-' + Math.floor(100000 + Math.random() * 900000);
 
-    const message = encodeURIComponent(
+    const message =
       `🎉 NEW ORDER SUBMITTED (#${orderId})\n\n` +
       `Customer Name: ${cleanName || 'Customer'}\n` +
       `WhatsApp Phone: ${cleanPhone}\n` +
@@ -124,8 +138,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       `Payment Method: ${activeMethod.name}\n` +
       (cleanSender ? `Sender Number: ${cleanSender}\n` : '') +
       (cleanTrx ? `Transaction ID: ${cleanTrx}\n` : '') +
-      `\nPlease verify payment and deliver the digital credentials.`
-    );
+      `\nPlease verify payment and deliver the digital credentials.`;
+
+    const targetWhatsAppUrl = getWhatsAppUrl(settings?.whatsappNumber, message);
 
     const newOrder: Order = {
       id: orderId,
@@ -153,12 +168,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       onPlaceOrder(newOrder);
     }
 
+    setCompletedOrderId(orderId);
+    setWhatsappOrderUrl(targetWhatsAppUrl);
     setOrderComplete(true);
     onOrderSuccess();
 
     // Auto open WhatsApp with the formatted order invoice
     setTimeout(() => {
-      window.open(`${WHATSAPP_URL}?text=${message}`, '_blank', 'noopener,noreferrer');
+      window.open(targetWhatsAppUrl, '_blank', 'noopener,noreferrer');
     }, 1200);
   };
 
@@ -178,16 +195,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {orderComplete ? (
           /* Success Screen */
-          <div className="p-8 text-center space-y-5">
+          <div className="p-6 sm:p-8 text-center space-y-5">
             <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
               <Check className="w-8 h-8 stroke-[3]" />
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-heading font-black text-2xl text-[#0F172A]">Order Received Successfully!</h3>
+              <h3 className="font-heading font-black text-2xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
               <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                Thank you, <strong>{customerName || 'Customer'}</strong>! We are redirecting you to WhatsApp to finalize verification and instant delivery to <span className="text-[#00C853] font-bold">{customerEmail}</span>.
+                ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! আপনার অর্ডারটি গ্রহণ করা হয়েছে। দ্রুত ডেলিভারির জন্য নিচের হোয়াটসঅ্যাপ বাটনে ক্লিক করে ইনভয়েসটি পাঠিয়ে দিন।
               </p>
+            </div>
+
+            {/* Order ID Pill */}
+            <div className="flex items-center justify-center gap-2 max-w-xs mx-auto p-2 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl">
+              <span className="text-xs text-slate-600 font-semibold">Order ID:</span>
+              <span className="font-mono font-black text-sm text-[#15803D]">{completedOrderId}</span>
+              <button
+                type="button"
+                onClick={() => handleCopyOrderId(completedOrderId)}
+                className="ml-1 p-1 hover:bg-white rounded-lg text-slate-500 hover:text-[#00C853] transition-colors"
+                title="Copy Order ID"
+              >
+                {copiedOrderId ? <Check className="w-3.5 h-3.5 text-[#00C853]" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
             </div>
 
             <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-left max-w-md mx-auto text-xs space-y-2">
@@ -196,26 +227,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span className="font-black text-[#00C853] text-sm">{formatPrice(finalTotal)}</span>
               </div>
               <div className="flex justify-between text-slate-600">
+                <span>Delivery Email:</span>
+                <span className="font-bold text-[#0F172A]">{customerEmail}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
                 <span>Delivery Guarantee:</span>
                 <span className="text-[#15803D] font-bold flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-[#00C853]" /> 5-15 Minutes
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Support Line:</span>
-                <span className="text-[#0F172A] font-bold font-mono">+8801886822838</span>
+                <span>Support Hotline:</span>
+                <span className="text-[#0F172A] font-bold font-mono">{settings?.whatsappNumber || '+8801886822838'}</span>
               </div>
             </div>
 
+            {/* Action buttons */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href={WHATSAPP_URL}
+                href={whatsappOrderUrl || getWhatsAppUrl(settings?.whatsappNumber)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-sm py-3 px-6 rounded-xl shadow-md transition-all"
+                className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-sm py-3 px-6 rounded-xl shadow-md transition-all animate-bounce"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>Open WhatsApp Support</span>
+                <MessageCircle className="w-4 h-4 fill-white" />
+                <span>Send Invoice via WhatsApp</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
                 onClick={onClose}
@@ -224,6 +261,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 Back to Store
               </button>
             </div>
+
+            {onOpenPolicy && (
+              <button
+                onClick={onOpenPolicy}
+                className="text-xs text-slate-500 hover:text-[#00C853] underline flex items-center justify-center gap-1 mx-auto pt-2"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>ওয়ারেন্টি ও রিফান্ড পলিসি পড়ুন</span>
+              </button>
+            )}
           </div>
         ) : (
           /* Checkout Form */
@@ -336,7 +383,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                 {/* Payment Option Pills */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {BANGLADESH_PAYMENTS.map((method) => {
+                  {paymentMethods.map((method) => {
                     const isSelected = selectedPayment === method.id;
                     return (
                       <button
@@ -429,34 +476,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
               </div>
 
-              {errorMsg && (
-                <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
-                  {errorMsg}
+              {/* Guarantees & Policy trigger */}
+              <div className="p-3 rounded-xl bg-[#F0FDF4] border border-[#86EFAC] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-[#15803D] font-bold">
+                  <ShieldCheck className="w-4 h-4 text-[#00C853]" />
+                  <span>100% Genuine Replacement Guarantee</span>
                 </div>
-              )}
+                {onOpenPolicy && (
+                  <button
+                    type="button"
+                    onClick={onOpenPolicy}
+                    className="text-[11px] text-[#00C853] font-bold underline hover:text-[#15803D]"
+                  >
+                    View Policy
+                  </button>
+                )}
+              </div>
 
               {/* Submit CTA */}
-              <div className="pt-2 space-y-2">
-                <button
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00B248] text-white font-black text-sm sm:text-base py-3.5 px-6 rounded-xl shadow-[0_4px_16px_rgba(0,200,83,0.35)] transition-all active:scale-95"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Confirm Order & Activate Instantly ({formatPrice(finalTotal)})</span>
-                </button>
-
-                <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 pt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#00C853]" />
-                  <span>100% Secure Transaction & Instant Replacement Guarantee</span>
-                </div>
-              </div>
+              <button
+                type="submit"
+                className="w-full bg-[#00C853] hover:bg-[#00B248] text-white font-heading font-black text-sm py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+              >
+                <span>Confirm Order & Get Delivery ({formatPrice(finalTotal)})</span>
+              </button>
 
             </form>
           </div>
         )}
 
       </div>
-
     </div>
   );
 };

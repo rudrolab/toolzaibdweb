@@ -1,11 +1,18 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
-import { WHATSAPP_URL } from '../data/products';
+import { StoreSettings } from '../types';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 
-export const FloatingWhatsApp: React.FC = () => {
+interface FloatingWhatsAppProps {
+  settings?: StoreSettings;
+}
+
+export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({ settings }) => {
+  const whatsappUrl = getWhatsAppUrl(settings?.whatsappNumber);
+
   return (
     <a
-      href={WHATSAPP_URL}
+      href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white p-3.5 sm:px-4 sm:py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all group"

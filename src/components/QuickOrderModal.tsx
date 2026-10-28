@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Copy, Zap, MessageCircle, AlertCircle } from 'lucide-react';
-import { Product, ProductVariant, Order } from '../types';
-import { BANGLADESH_PAYMENTS, WHATSAPP_URL } from '../data/products';
+import { X, Check, Copy, Zap, MessageCircle, AlertCircle, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Product, ProductVariant, Order, Coupon, StoreSettings } from '../types';
 import { ProductCardBanner } from './ProductCardBanner';
+import { getStorePaymentMethods, getWhatsAppUrl } from '../utils/paymentHelpers';
 import {
   sanitizeInput,
   isValidBDPhone,
@@ -17,6 +17,10 @@ interface QuickOrderModalProps {
   onClose: () => void;
   onOrderSuccess: (msg: string) => void;
   onPlaceOrder?: (order: Order) => void;
+  coupons?: Coupon[];
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
+  onCouponUsed?: (couponCode: string) => void;
 }
 
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
@@ -24,19 +28,27 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   onClose,
   onOrderSuccess,
   onPlaceOrder,
+  coupons = [],
+  settings,
+  onOpenPolicy,
+  onCouponUsed,
 }) => {
+  const paymentMethods = getStorePaymentMethods(settings);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>('TOOLZAI10');
-  const [selectedPayment, setSelectedPayment] = useState(BANGLADESH_PAYMENTS[0].id);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0].id);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [senderNumber, setSenderNumber] = useState('');
   const [trxId, setTrxId] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedOrderId, setCopiedOrderId] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [completedOrderId, setCompletedOrderId] = useState('');
+  const [whatsappOrderUrl, setWhatsappOrderUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [honeypot, setHoneypot] = useState('');
 
@@ -50,7 +62,22 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     setQuantity(1);
     setErrorMsg('');
     setOrderComplete(false);
-  }, [product]);
+    
+    // Auto-apply TOOLZAI10 if available in coupons or as fallback
+    const defaultCoupon = coupons.find((c) => c.code.toUpperCase() === 'TOOLZAI10' && c.isActive);
+    if (defaultCoupon) {
+      setAppliedCoupon(defaultCoupon);
+    } else {
+      setAppliedCoupon({
+        id: 'c-default-10',
+        code: 'TOOLZAI10',
+        discountType: 'percent',
+        discountValue: 10,
+        isActive: true,
+        usageCount: 0,
+      });
+    }
+  }, [product, coupons]);
 
   if (!product) return null;
 
@@ -61,8 +88,14 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   const rawSubtotal = unitPrice * quantity;
 
   let discount = 0;
-  if (appliedCoupon === 'TOOLZAI10') {
-    discount = Math.round(rawSubtotal * 0.10);
+  if (appliedCoupon) {
+    if (appliedCoupon.minSpend && rawSubtotal < appliedCoupon.minSpend) {
+      discount = 0;
+    } else if (appliedCoupon.discountType === 'percent') {
+      discount = Math.round(rawSubtotal * (appliedCoupon.discountValue / 100));
+    } else {
+      discount = Math.min(rawSubtotal, appliedCoupon.discountValue);
+    }
   }
 
   const finalTotal = Math.max(0, rawSubtotal - discount);
@@ -71,7 +104,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
   };
 
-  const activeMethod = BANGLADESH_PAYMENTS.find((p) => p.id === selectedPayment) || BANGLADESH_PAYMENTS[0];
+  const activeMethod = paymentMethods.find((p) => p.id === selectedPayment) || paymentMethods[0];
 
   const handleCopyNumber = (num: string) => {
     navigator.clipboard.writeText(num);
@@ -79,14 +112,49 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyOrderId = (idText: string) => {
+    navigator.clipboard.writeText(idText);
+    setCopiedOrderId(true);
+    setTimeout(() => setCopiedOrderId(false), 2000);
+  };
+
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    const c = couponCode.trim().toUpperCase();
-    if (c === 'TOOLZAI10' || c === 'WELCOME50') {
-      setAppliedCoupon(c);
+    setErrorMsg('');
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+
+    // Look up in passed coupons list
+    const found = coupons.find((c) => c.code.toUpperCase() === code && c.isActive);
+    if (found) {
+      if (found.minSpend && rawSubtotal < found.minSpend) {
+        setErrorMsg(`কুপনটির জন্য সর্বনিম্ন অর্ডার ${found.minSpend}৳ প্রয়োজন।`);
+        return;
+      }
+      setAppliedCoupon(found);
+      setCouponCode('');
+    } else if (code === 'TOOLZAI10') {
+      setAppliedCoupon({
+        id: 'c-10',
+        code: 'TOOLZAI10',
+        discountType: 'percent',
+        discountValue: 10,
+        isActive: true,
+        usageCount: 0,
+      });
+      setCouponCode('');
+    } else if (code === 'WELCOME50') {
+      setAppliedCoupon({
+        id: 'c-50',
+        code: 'WELCOME50',
+        discountType: 'fixed',
+        discountValue: 50,
+        isActive: true,
+        usageCount: 0,
+      });
       setCouponCode('');
     } else {
-      setErrorMsg('Invalid coupon code. Try TOOLZAI10.');
+      setErrorMsg('সঠিক কুপন কোড প্রদান করুন। (Try: TOOLZAI10)');
     }
   };
 
@@ -138,12 +206,12 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     const orderId = 'TZ-' + Math.floor(100000 + Math.random() * 900000);
     const variantInfo = selectedVariant ? ` (${selectedVariant.name})` : '';
 
-    const message = encodeURIComponent(
+    const message =
       `🎉 TOOLZAI BD QUICK ORDER (#${orderId})\n\n` +
       `Product: ${product.title}${variantInfo}\n` +
       `Quantity: ${quantity}\n` +
       `Total Payable: ${formatPrice(finalTotal)}\n` +
-      (discount > 0 ? `Coupon Discount: -${formatPrice(discount)}\n` : '') +
+      (discount > 0 ? `Coupon Discount (${appliedCoupon?.code}): -${formatPrice(discount)}\n` : '') +
       `\nCustomer Details:\n` +
       `Name: ${cleanName || 'Customer'}\n` +
       `WhatsApp Phone: ${cleanPhone}\n` +
@@ -151,8 +219,9 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       `Payment: ${activeMethod.name} Send Money\n` +
       (cleanSender ? `Sender Number: ${cleanSender}\n` : '') +
       (cleanTrx ? `Transaction ID: ${cleanTrx}\n` : '') +
-      `\nPlease verify and deliver digital credentials instantly.`
-    );
+      `\nPlease verify and deliver digital credentials instantly.`;
+
+    const targetWhatsAppUrl = getWhatsAppUrl(settings?.whatsappNumber, message);
 
     const newOrder: Order = {
       id: orderId,
@@ -182,11 +251,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       onPlaceOrder(newOrder);
     }
 
+    if (appliedCoupon && onCouponUsed) {
+      onCouponUsed(appliedCoupon.code);
+    }
+
+    setCompletedOrderId(orderId);
+    setWhatsappOrderUrl(targetWhatsAppUrl);
     setOrderComplete(true);
     onOrderSuccess(`Order #${orderId} placed successfully!`);
 
     setTimeout(() => {
-      window.open(`${WHATSAPP_URL}?text=${message}`, '_blank', 'noopener,noreferrer');
+      window.open(targetWhatsAppUrl, '_blank', 'noopener,noreferrer');
     }, 1200);
   };
 
@@ -206,22 +281,73 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
         {orderComplete ? (
           /* Order Complete State */
-          <div className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
+          <div className="p-6 sm:p-8 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
               <Check className="w-8 h-8 stroke-[3]" />
             </div>
-            <h3 className="font-black text-xl text-[#0F172A]">Order Submitted Successfully!</h3>
-            <p className="text-xs text-[#475569] leading-relaxed">
-              We are opening WhatsApp with your receipt. Digital access credentials will be delivered to <strong className="text-[#00C853]">{customerEmail}</strong> within 5-15 minutes.
-            </p>
-            <div className="pt-2">
+            
+            <div className="space-y-1">
+              <h3 className="font-heading font-black text-xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
+              <p className="text-xs text-[#475569] leading-relaxed">
+                ধন্যবাদ! ডিজিটাল লাইসেন্স ক্রেডেনশিয়াল <strong className="text-[#00C853]">{customerEmail}</strong> এবং হোয়াটসঅ্যাপে ৫-১৫ মিনিটে পৌঁছে দেওয়া হবে।
+              </p>
+            </div>
+
+            {/* Order ID Pill */}
+            <div className="flex items-center justify-center gap-2 max-w-xs mx-auto p-2 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl">
+              <span className="text-xs text-slate-600 font-semibold">Order ID:</span>
+              <span className="font-mono font-black text-sm text-[#15803D]">{completedOrderId}</span>
+              <button
+                type="button"
+                onClick={() => handleCopyOrderId(completedOrderId)}
+                className="ml-1 p-1 hover:bg-white rounded-lg text-slate-500 hover:text-[#00C853] transition-colors"
+                title="Copy Order ID"
+              >
+                {copiedOrderId ? <Check className="w-3.5 h-3.5 text-[#00C853]" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {/* Total breakdown */}
+            <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs space-y-1 text-left">
+              <div className="flex justify-between text-slate-600">
+                <span>Total Amount:</span>
+                <span className="font-black text-[#00C853]">{formatPrice(finalTotal)}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Hotline:</span>
+                <span className="font-mono font-bold text-slate-800">{settings?.whatsappNumber || '+8801886822838'}</span>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="pt-2 flex flex-col gap-2">
+              <a
+                href={whatsappOrderUrl || getWhatsAppUrl(settings?.whatsappNumber)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold py-3 rounded-xl text-sm shadow-md transition-all animate-bounce"
+              >
+                <MessageCircle className="w-4 h-4 fill-white" />
+                <span>Send Invoice via WhatsApp</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
               <button
                 onClick={onClose}
-                className="w-full bg-[#00C853] hover:bg-[#009624] text-white font-bold py-3 rounded-xl text-sm shadow-md"
+                className="w-full bg-[#F8FAFC] hover:bg-[#F1F5F9] text-slate-700 font-semibold py-2.5 rounded-xl text-xs border border-[#CBD5E1]"
               >
                 Close & Return to Store
               </button>
             </div>
+
+            {onOpenPolicy && (
+              <button
+                onClick={onOpenPolicy}
+                className="text-xs text-slate-500 hover:text-[#00C853] underline flex items-center justify-center gap-1 mx-auto pt-1"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>ওয়ারেন্টি ও রিফান্ড পলিসি পড়ুন</span>
+              </button>
+            )}
           </div>
         ) : (
           /* Form Content */
@@ -278,7 +404,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 </div>
               )}
               
-              {/* Variation Chips (MixProBD style: .mixpro-variation-chip) */}
+              {/* Variation Chips */}
               {product.hasVariants && product.variants && product.variants.length > 0 && (
                 <div>
                   <label className="block text-[11px] font-extrabold text-[#475569] uppercase tracking-wider mb-2">
@@ -351,7 +477,9 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
               {appliedCoupon && (
                 <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded-lg flex justify-between items-center">
-                  <span>Coupon {appliedCoupon} applied (10% OFF)!</span>
+                  <span>
+                    Coupon {appliedCoupon.code} applied ({appliedCoupon.discountType === 'percent' ? `${appliedCoupon.discountValue}% OFF` : `${appliedCoupon.discountValue}৳ OFF`})!
+                  </span>
                   <span className="text-emerald-800">Saved -{formatPrice(discount)}</span>
                 </div>
               )}
@@ -397,7 +525,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 </label>
 
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                  {BANGLADESH_PAYMENTS.map((m) => {
+                  {paymentMethods.map((m) => {
                     const isSelected = selectedPayment === m.id;
                     return (
                       <button
@@ -460,11 +588,22 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 </div>
               </div>
 
-              {errorMsg && (
-                <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
-                  {errorMsg}
+              {/* Guarantees & Policy trigger */}
+              <div className="p-3 rounded-xl bg-[#F0FDF4] border border-[#86EFAC] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-[#15803D] font-bold">
+                  <ShieldCheck className="w-4 h-4 text-[#00C853]" />
+                  <span>100% Genuine Replacement Guarantee</span>
                 </div>
-              )}
+                {onOpenPolicy && (
+                  <button
+                    type="button"
+                    onClick={onOpenPolicy}
+                    className="text-[11px] text-[#00C853] font-bold underline hover:text-[#15803D]"
+                  >
+                    View Policy
+                  </button>
+                )}
+              </div>
 
               {/* Total Calculation & Place Order Button */}
               <div className="pt-2">

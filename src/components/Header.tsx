@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ShoppingBag, Search, MessageCircle, Menu, X, Shield, Sparkles, PackageCheck, ArrowRight, Star, LayoutDashboard } from 'lucide-react';
-import { WHATSAPP_URL, PRODUCTS_DATA } from '../data/products';
-import { Product } from '../types';
+import { PRODUCTS_DATA } from '../data/products';
+import { Product, StoreSettings } from '../types';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 import { Icon } from './Icon';
 
 interface HeaderProps {
@@ -14,6 +15,8 @@ interface HeaderProps {
   onSelectProduct: (p: Product) => void;
   onOpenTrackOrder: () => void;
   onOpenAdmin: () => void;
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,6 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectProduct,
   onOpenTrackOrder,
   onOpenAdmin,
+  settings,
+  onOpenPolicy,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -215,7 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* WhatsApp Support Button */}
             <a
-              href={WHATSAPP_URL}
+              href={getWhatsAppUrl(settings?.whatsappNumber)}
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#E6FCED] border border-[#86EFAC] text-[#15803D] hover:bg-[#DCFCE7] transition-all text-xs font-bold group shadow-sm"
@@ -296,7 +301,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="md:hidden bg-white border-b border-[#E2E8F0] px-4 py-4 space-y-4 shadow-lg">
           <div className="grid grid-cols-2 gap-2">
             <a
-              href={WHATSAPP_URL}
+              href={getWhatsAppUrl(settings?.whatsappNumber)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-[#E6FCED] border border-[#86EFAC] text-[#15803D] font-bold text-xs text-center"
@@ -328,9 +333,21 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <div className="pt-2 border-t border-[#E2E8F0] text-xs text-slate-500 flex items-center justify-between">
-            <span className="flex items-center gap-1 font-medium">
-              <Shield className="w-3.5 h-3.5 text-[#00C853]" /> 100% Replacement Warranty
-            </span>
+            {onOpenPolicy ? (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenPolicy();
+                }}
+                className="flex items-center gap-1 font-semibold text-[#15803D] hover:underline"
+              >
+                <Shield className="w-3.5 h-3.5 text-[#00C853]" /> 100% Warranty & Policy
+              </button>
+            ) : (
+              <span className="flex items-center gap-1 font-medium">
+                <Shield className="w-3.5 h-3.5 text-[#00C853]" /> 100% Replacement Warranty
+              </span>
+            )}
             <span className="flex items-center gap-1 font-medium">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Instant 5-Min
             </span>

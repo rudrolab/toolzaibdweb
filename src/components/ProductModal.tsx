@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { X, Star, Zap, ShieldCheck, Check, ShoppingBag, MessageCircle, Clock } from 'lucide-react';
-import { Product, ProductVariant } from '../types';
+import { Product, ProductVariant, StoreSettings } from '../types';
 import { Icon } from './Icon';
-import { WHATSAPP_URL } from '../data/products';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 
 interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (product: Product, variant?: ProductVariant, quantity?: number) => void;
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onAddToCart,
+  settings,
+  onOpenPolicy,
 }) => {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
@@ -48,14 +52,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const handleWhatsAppBuy = () => {
     const variantName = selectedVariant ? ` [${selectedVariant.name}]` : '';
-    const message = encodeURIComponent(
+    const message =
       `Hello ToolzAi BD, I want to order:\n` +
       `Product: ${product.title}${variantName}\n` +
       `Quantity: ${quantity}\n` +
       `Total: ${formatPrice(currentPrice * quantity)}\n` +
-      `Please provide bKash/Nagad payment number and activation details.`
-    );
-    window.open(`${WHATSAPP_URL}?text=${message}`, '_blank');
+      `Please provide bKash/Nagad payment number and activation details.`;
+    const targetUrl = getWhatsAppUrl(settings?.whatsappNumber, message);
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -260,14 +264,25 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           </div>
 
           {/* Trust Guarantees */}
-          <div className="p-3.5 rounded-xl bg-[#E6FCED] border border-[#86EFAC] flex items-center gap-3 text-xs text-[#15803D]">
-            <ShieldCheck className="w-6 h-6 text-[#00C853] flex-shrink-0" />
-            <div>
-              <span className="font-bold block">100% Replacement Warranty by ToolzAi BD</span>
-              <span className="text-slate-600 text-[11px]">
-                If you encounter any activation issue during the subscription period, we replace it instantly.
-              </span>
+          <div className="p-3.5 rounded-xl bg-[#E6FCED] border border-[#86EFAC] flex items-center justify-between gap-3 text-xs text-[#15803D]">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-6 h-6 text-[#00C853] flex-shrink-0" />
+              <div>
+                <span className="font-bold block">100% Replacement Warranty by ToolzAi BD</span>
+                <span className="text-slate-600 text-[11px]">
+                  If you encounter any activation issue during the subscription period, we replace it instantly.
+                </span>
+              </div>
             </div>
+            {onOpenPolicy && (
+              <button
+                type="button"
+                onClick={onOpenPolicy}
+                className="text-xs text-[#00C853] hover:text-[#15803D] font-bold underline whitespace-nowrap"
+              >
+                View Policy
+              </button>
+            )}
           </div>
 
         </div>

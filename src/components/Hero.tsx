@@ -1,12 +1,15 @@
 import React from 'react';
 import { Zap, ShieldCheck, Headphones, CheckCircle2, CreditCard, Sparkles, ArrowRight } from 'lucide-react';
-import { WHATSAPP_URL } from '../data/products';
+import { StoreSettings } from '../types';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 
 interface HeroProps {
   onExploreClick: () => void;
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ onExploreClick }) => {
+export const Hero: React.FC<HeroProps> = ({ onExploreClick, settings, onOpenPolicy }) => {
   return (
     <div className="relative overflow-hidden pt-8 pb-12 sm:pt-12 sm:pb-16 border-b border-[#E2E8F0] bg-gradient-to-b from-[#F0FDF4]/80 via-[#F8FAFC] to-[#FFFFFF]">
       {/* Subtle Decorative Ambient Elements */}
@@ -44,7 +47,13 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick }) => {
                 <Zap className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 <span className="font-semibold">Instant 5-Min Delivery</span>
               </div>
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm">
+              <div
+                onClick={onOpenPolicy}
+                className={`flex items-center gap-2 p-2.5 rounded-xl bg-white border border-[#E2E8F0] shadow-sm ${
+                  onOpenPolicy ? 'cursor-pointer hover:border-[#86EFAC] hover:bg-[#F0FDF4] transition-colors' : ''
+                }`}
+                title="View 100% Replacement Warranty & Policies"
+              >
                 <ShieldCheck className="w-4 h-4 text-[#00C853] flex-shrink-0" />
                 <span className="font-semibold">100% Replacement Warranty</span>
               </div>
@@ -65,7 +74,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick }) => {
               </button>
 
               <a
-                href={WHATSAPP_URL}
+                href={getWhatsAppUrl(settings?.whatsappNumber)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] text-[#0F172A] font-bold text-sm sm:text-base px-5 py-3.5 rounded-xl transition-all shadow-sm"

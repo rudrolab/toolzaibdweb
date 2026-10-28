@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Trash2, ShoppingBag, ArrowRight, Tag, ShieldCheck, Zap, MessageCircle } from 'lucide-react';
-import { CartItem } from '../types';
-import { WHATSAPP_URL } from '../data/products';
+import { CartItem, Coupon, StoreSettings } from '../types';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -10,6 +10,9 @@ interface CartDrawerProps {
   onUpdateQuantity: (index: number, newQty: number) => void;
   onRemoveItem: (index: number) => void;
   onOpenCheckout: (discountAmount: number, couponCode: string) => void;
+  coupons?: Coupon[];
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -19,21 +22,47 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onOpenCheckout,
+  coupons = [],
+  settings,
+  onOpenPolicy,
 }) => {
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>('TOOLZAI10'); // Default flash promo
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState('');
-
-  if (!isOpen) return null;
 
   const rawSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
+  // Auto-apply TOOLZAI10 promo on first mount if available
+  useEffect(() => {
+    if (!appliedCoupon) {
+      const toolzaiCoupon = coupons.find((c) => c.code.toUpperCase() === 'TOOLZAI10' && c.isActive);
+      if (toolzaiCoupon) {
+        setAppliedCoupon(toolzaiCoupon);
+      } else {
+        setAppliedCoupon({
+          id: 'c-default-cart-10',
+          code: 'TOOLZAI10',
+          discountType: 'percent',
+          discountValue: 10,
+          isActive: true,
+          usageCount: 0,
+        });
+      }
+    }
+  }, [coupons]);
+
+  if (!isOpen) return null;
+
   // Apply discount logic
   let discountAmount = 0;
-  if (appliedCoupon === 'TOOLZAI10') {
-    discountAmount = Math.round(rawSubtotal * 0.10);
-  } else if (appliedCoupon === 'WELCOME50') {
-    discountAmount = Math.min(rawSubtotal, 50);
+  if (appliedCoupon) {
+    if (appliedCoupon.minSpend && rawSubtotal < appliedCoupon.minSpend) {
+      discountAmount = 0;
+    } else if (appliedCoupon.discountType === 'percent') {
+      discountAmount = Math.round(rawSubtotal * (appliedCoupon.discountValue / 100));
+    } else {
+      discountAmount = Math.min(rawSubtotal, appliedCoupon.discountValue);
+    }
   }
 
   const finalTotal = Math.max(0, rawSubtotal - discountAmount);
@@ -48,11 +77,36 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
 
-    if (code === 'TOOLZAI10' || code === 'WELCOME50' || code === 'PROMO10') {
-      setAppliedCoupon(code);
+    const found = coupons.find((c) => c.code.toUpperCase() === code && c.isActive);
+    if (found) {
+      if (found.minSpend && rawSubtotal < found.minSpend) {
+        setCouponError(`কুপনটির জন্য সর্বনিম্ন অর্ডার ${found.minSpend}৳ প্রয়োজন।`);
+        return;
+      }
+      setAppliedCoupon(found);
+      setCouponCode('');
+    } else if (code === 'TOOLZAI10') {
+      setAppliedCoupon({
+        id: 'c-10',
+        code: 'TOOLZAI10',
+        discountType: 'percent',
+        discountValue: 10,
+        isActive: true,
+        usageCount: 0,
+      });
+      setCouponCode('');
+    } else if (code === 'WELCOME50') {
+      setAppliedCoupon({
+        id: 'c-50',
+        code: 'WELCOME50',
+        discountType: 'fixed',
+        discountValue: 50,
+        isActive: true,
+        usageCount: 0,
+      });
       setCouponCode('');
     } else {
-      setCouponError('Invalid promo code. Try TOOLZAI10 for 10% off.');
+      setCouponError('কুপন কোডটি সঠিক নয়। (Try: TOOLZAI10)');
     }
   };
 
@@ -65,15 +119,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       )
       .join('\n');
 
-    const message = encodeURIComponent(
+    const message =
       `Hello ToolzAi BD! I want to complete my order:\n\n` +
       `${itemsSummary}\n\n` +
       `Subtotal: ${formatPrice(rawSubtotal)}\n` +
-      (discountAmount > 0 ? `Discount (${appliedCoupon}): -${formatPrice(discountAmount)}\n` : '') +
+      (discountAmount > 0 ? `Discount (${appliedCoupon?.code}): -${formatPrice(discountAmount)}\n` : '') +
       `Total Payable: ${formatPrice(finalTotal)}\n\n` +
-      `Please provide bKash / Nagad Send Money details.`
-    );
-    window.open(`${WHATSAPP_URL}?text=${message}`, '_blank');
+      `Please provide bKash / Nagad Send Money details.`;
+
+    const targetUrl = getWhatsAppUrl(settings?.whatsappNumber, message);
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -98,105 +153,121 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-[#F1F5F9] text-slate-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors"
-            aria-label="Close cart"
+            aria-label="Close cart drawer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Free instant delivery banner */}
+        {/* Free instant delivery alert banner */}
         <div className="bg-[#E6FCED] border-b border-[#86EFAC] px-4 py-2 flex items-center gap-2 text-xs text-[#15803D] font-bold">
           <Zap className="w-4 h-4 text-[#00C853] flex-shrink-0" />
-          <span>⚡ Instant digital delivery to Email & WhatsApp</span>
+          <span>Instant Email & WhatsApp Delivery in 5-15 mins!</span>
         </div>
 
         {/* Items List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
           {cartItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4 text-slate-400">
-              <div className="w-16 h-16 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-slate-400">
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#F1F5F9] flex items-center justify-center text-slate-400">
                 <ShoppingBag className="w-8 h-8" />
               </div>
               <div>
-                <h4 className="font-heading font-bold text-[#0F172A] text-base">Your cart is empty</h4>
+                <h4 className="font-heading font-black text-slate-800 text-base">Your cart is empty</h4>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs">
-                  Explore genuine Microsoft, Canva, AI, or streaming accounts and enjoy up to 96% discount.
+                  Browse authentic AI subscriptions, Microsoft tools, and creative accounts.
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="bg-[#00C853] hover:bg-[#00B248] text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                className="bg-[#00C853] hover:bg-[#00B248] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition-all"
               >
                 Start Shopping
               </button>
             </div>
           ) : (
-            cartItems.map((item, index) => (
-              <div
-                key={`${item.product.id}-${item.selectedVariant?.id || 'standard'}-${index}`}
-                className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-start gap-3 hover:border-[#86EFAC] transition-all"
-              >
-                <div className="w-12 h-12 rounded-lg bg-white border border-[#E2E8F0] p-0.5 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                  {item.product.imageUrl ? (
-                    <img src={item.product.imageUrl} alt={item.product.title} className="w-full h-full object-contain" />
-                  ) : (
-                    <ShoppingBag className="w-5 h-5 text-slate-400" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-1">
-                    <h4 className="font-bold text-xs sm:text-sm text-[#0F172A] line-clamp-1">
-                      {item.product.title}
-                    </h4>
-                    <button
-                      onClick={() => onRemoveItem(index)}
-                      className="text-slate-400 hover:text-red-500 p-1 transition-colors"
-                      title="Remove item"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            cartItems.map((item, index) => {
+              const itemTotal = item.price * item.quantity;
+              return (
+                <div
+                  key={`${item.product.id}-${item.selectedVariant?.id || 'base'}-${index}`}
+                  className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex gap-3 relative hover:border-[#86EFAC] transition-colors"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-14 h-14 rounded-xl bg-white border border-[#E2E8F0] p-1 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {item.product.imageUrl ? (
+                      <img
+                        src={item.product.imageUrl}
+                        alt={item.product.title}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-lg">⭐</span>
+                    )}
                   </div>
 
-                  {item.selectedVariant && (
-                    <span className="text-[11px] text-[#00C853] font-semibold block mt-0.5">
-                      {item.selectedVariant.name}
-                    </span>
-                  )}
-
-                  <div className="flex items-center justify-between mt-3">
-                    {/* Quantity modifier */}
-                    <div className="flex items-center bg-white border border-[#CBD5E1] rounded-md shadow-sm">
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-heading font-bold text-xs sm:text-sm text-[#0F172A] line-clamp-1">
+                        {item.product.title}
+                      </h4>
                       <button
-                        onClick={() => onUpdateQuantity(index, item.quantity - 1)}
-                        className="px-2 py-0.5 text-xs text-slate-600 hover:text-black font-bold"
+                        onClick={() => onRemoveItem(index)}
+                        className="text-slate-400 hover:text-red-600 transition-colors p-0.5"
+                        aria-label="Remove item"
                       >
-                        -
-                      </button>
-                      <span className="px-2 py-0.5 text-xs font-bold text-[#0F172A]">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onUpdateQuantity(index, item.quantity + 1)}
-                        className="px-2 py-0.5 text-xs text-slate-600 hover:text-black font-bold"
-                      >
-                        +
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-xs font-black text-[#00C853]">
-                        {formatPrice(item.price * item.quantity)}
+                    {item.selectedVariant && (
+                      <span className="inline-block text-[10px] text-[#15803D] bg-[#E6FCED] px-1.5 py-0.5 rounded font-bold mt-0.5">
+                        {item.selectedVariant.name}
                       </span>
+                    )}
+
+                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-[#E2E8F0]">
+                      <div className="text-xs font-black text-[#00C853]">
+                        {formatPrice(itemTotal)}
+                        {item.quantity > 1 && (
+                          <span className="text-[10px] text-slate-400 font-normal ml-1">
+                            ({formatPrice(item.price)} each)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Quantity Controller */}
+                      <div className="flex items-center gap-1.5 bg-white border border-[#CBD5E1] rounded-lg p-0.5 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => onUpdateQuantity(index, item.quantity - 1)}
+                          className="w-5 h-5 rounded flex items-center justify-center text-xs font-black text-slate-600 hover:bg-[#F1F5F9]"
+                          aria-label="Decrease quantity"
+                        >
+                          -
+                        </button>
+                        <span className="w-5 text-center text-xs font-bold text-[#0F172A]">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateQuantity(index, item.quantity + 1)}
+                          className="w-5 h-5 rounded flex items-center justify-center text-xs font-black text-slate-600 hover:bg-[#F1F5F9]"
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
-        {/* Drawer Footer & Checkout Controls */}
+        {/* Drawer Footer & Checkout Trigger */}
         {cartItems.length > 0 && (
           <div className="p-4 sm:p-5 border-t border-[#E2E8F0] bg-[#F8FAFC] space-y-3.5">
             
@@ -223,7 +294,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {appliedCoupon && (
               <div className="flex items-center justify-between text-xs bg-[#E6FCED] border border-[#86EFAC] px-2.5 py-1.5 rounded-lg text-[#15803D]">
                 <span className="flex items-center gap-1 font-bold">
-                  <Tag className="w-3 h-3 text-[#00C853]" /> Coupon applied: {appliedCoupon}
+                  <Tag className="w-3 h-3 text-[#00C853]" /> 
+                  Coupon {appliedCoupon.code} ({appliedCoupon.discountType === 'percent' ? `${appliedCoupon.discountValue}%` : `${appliedCoupon.discountValue}৳`} OFF)
                 </span>
                 <button
                   onClick={() => setAppliedCoupon(null)}
@@ -247,7 +319,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-[#15803D] font-bold">
-                  <span>Special Discount ({appliedCoupon})</span>
+                  <span>Special Discount ({appliedCoupon?.code})</span>
                   <span>-{formatPrice(discountAmount)}</span>
                 </div>
               )}
@@ -261,7 +333,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {/* Actions */}
             <div className="space-y-2 pt-1">
               <button
-                onClick={() => onOpenCheckout(discountAmount, appliedCoupon || '')}
+                onClick={() => onOpenCheckout(discountAmount, appliedCoupon?.code || '')}
                 className="w-full flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00B248] text-white font-black text-sm py-3 px-4 rounded-xl shadow-[0_4px_14px_rgba(0,200,83,0.3)] transition-all active:scale-95"
               >
                 <span>Proceed to Checkout</span>
@@ -277,10 +349,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </button>
             </div>
 
-            {/* Trust badge */}
-            <div className="flex items-center justify-center gap-1.5 text-[10.5px] text-slate-500 pt-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#00C853]" />
-              <span>Safe & Verified Payments via bKash, Nagad, Rocket</span>
+            {/* Trust badge & Policy link */}
+            <div className="flex items-center justify-between text-[10.5px] text-slate-500 pt-1">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#00C853]" />
+                <span>Safe bKash / Nagad / Rocket</span>
+              </div>
+              {onOpenPolicy && (
+                <button
+                  type="button"
+                  onClick={onOpenPolicy}
+                  className="text-[#00C853] font-bold underline hover:text-[#15803D]"
+                >
+                  Warranty & Refund
+                </button>
+              )}
             </div>
 
           </div>

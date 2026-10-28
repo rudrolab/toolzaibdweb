@@ -1,13 +1,25 @@
 import React from 'react';
-import { MessageCircle, Mail, MapPin, ShieldCheck, Heart } from 'lucide-react';
-import { WHATSAPP_URL, BANGLADESH_PAYMENTS } from '../data/products';
+import { MessageCircle, Mail, MapPin, ShieldCheck, Heart, FileText } from 'lucide-react';
+import { StoreSettings } from '../types';
+import { getStorePaymentMethods, getWhatsAppUrl } from '../utils/paymentHelpers';
 
 interface FooterProps {
   onSelectCategory: (cat: string) => void;
   onOpenAdmin?: () => void;
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin }) => {
+export const Footer: React.FC<FooterProps> = ({
+  onSelectCategory,
+  onOpenAdmin,
+  settings,
+  onOpenPolicy,
+}) => {
+  const paymentMethods = getStorePaymentMethods(settings);
+  const whatsappUrl = getWhatsAppUrl(settings?.whatsappNumber);
+  const displayPhone = settings?.whatsappNumber || '+880 1886-822838';
+
   return (
     <footer className="bg-white border-t border-[#E2E8F0] text-slate-600 text-xs pt-14 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,9 +46,22 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
               Bangladesh's leading digital subscription & authentic software store. Providing instant delivery, genuine warranties, and local bKash/Nagad payments for students, developers, and creators.
             </p>
 
-            <div className="flex items-center gap-2 text-xs text-[#15803D] pt-1 font-semibold">
-              <ShieldCheck className="w-4 h-4 text-[#00C853]" />
-              <span>100% Genuine Digital Licenses & 24/7 Replacement Warranty</span>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2 text-xs text-[#15803D] font-semibold">
+                <ShieldCheck className="w-4 h-4 text-[#00C853]" />
+                <span>100% Genuine Digital Licenses & 24/7 Replacement Warranty</span>
+              </div>
+
+              {onOpenPolicy && (
+                <button
+                  type="button"
+                  onClick={onOpenPolicy}
+                  className="inline-flex items-center gap-1.5 text-xs text-[#00C853] hover:text-[#15803D] font-bold underline transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>ওয়ারেন্টি, রিটার্ন ও রিফান্ড পলিসি বিস্তারিত দেখুন</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -71,13 +96,13 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
             <h4 className="font-heading font-bold text-[#0F172A] text-sm">Contact & Support</h4>
             <div className="space-y-2.5">
               <a
-                href={WHATSAPP_URL}
+                href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-slate-700 hover:text-[#00C853] transition-colors font-semibold"
               >
                 <MessageCircle className="w-4 h-4 text-[#00C853] flex-shrink-0" />
-                <span>WhatsApp: +880 1886-822838</span>
+                <span>WhatsApp: {displayPhone}</span>
               </a>
               <div className="flex items-center gap-2 text-slate-700">
                 <Mail className="w-4 h-4 text-amber-500 flex-shrink-0" />
@@ -99,7 +124,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
                 loading="lazy"
               />
               <div className="flex flex-wrap gap-1.5">
-                {BANGLADESH_PAYMENTS.map((p) => (
+                {paymentMethods.map((p) => (
                   <span
                     key={p.id}
                     className="px-2 py-0.5 rounded bg-[#F8FAFC] border border-[#E2E8F0] text-[10px] font-bold"
@@ -120,6 +145,14 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
             © {new Date().getFullYear()} ToolzAi BD. All rights reserved. Authentic Digital Accounts & Software Subscriptions in Bangladesh.
           </div>
           <div className="flex items-center gap-4">
+            {onOpenPolicy && (
+              <button
+                onClick={onOpenPolicy}
+                className="text-slate-500 hover:text-[#00C853] font-semibold underline transition-colors"
+              >
+                Customer Trust & Policies
+              </button>
+            )}
             {onOpenAdmin && (
               <button
                 onClick={onOpenAdmin}

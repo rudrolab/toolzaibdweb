@@ -15,8 +15,8 @@ import {
   LayoutDashboard,
   AlertCircle
 } from 'lucide-react';
-import { LandingPage, Order } from '../../types';
-import { WHATSAPP_URL } from '../../data/products';
+import { LandingPage, Order, Coupon, StoreSettings } from '../../types';
+import { getWhatsAppUrl } from '../../utils/paymentHelpers';
 import {
   sanitizeInput,
   isValidBDPhone,
@@ -30,6 +30,10 @@ interface LandingPageViewProps {
   onPlaceOrder: (order: Order) => void;
   onGoHome: () => void;
   onOpenAdmin: () => void;
+  coupons?: Coupon[];
+  settings?: StoreSettings;
+  onOpenPolicy?: () => void;
+  onCouponUsed?: (code: string) => void;
 }
 
 export const LandingPageView: React.FC<LandingPageViewProps> = ({
@@ -37,6 +41,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   onPlaceOrder,
   onGoHome,
   onOpenAdmin,
+  coupons = [],
+  settings,
+  onOpenPolicy,
+  onCouponUsed,
 }) => {
   // Slider state
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -65,6 +73,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   const [customerEmail, setCustomerEmail] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [appliedCouponObj, setAppliedCouponObj] = useState<Coupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedPayment, setSelectedPayment] = useState('eps');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,8 +130,21 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     const c = couponCode.trim().toUpperCase();
-    if (c === 'TOOLZAI10' || c === 'VIP10') {
+    if (!c) return;
+
+    const found = coupons.find((cp) => cp.code.toUpperCase() === c && cp.isActive);
+    if (found) {
+      if (found.minSpend && rawSubtotal < found.minSpend) {
+        setCouponMsg({ type: 'error', text: `এই কুপনের জন্য সর্বনিম্ন অর্ডার ${found.minSpend}৳ প্রয়োজন।` });
+        return;
+      }
+      setAppliedCoupon(found.code);
+      setAppliedCouponObj(found);
+      const discountDesc = found.discountType === 'percent' ? `${found.discountValue}% ছাড়` : `${found.discountValue}৳ ছাড়`;
+      setCouponMsg({ type: 'success', text: `কুপন ${c} সফলভাবে প্রয়োগ করা হয়েছে! (${discountDesc})` });
+    } else if (c === 'TOOLZAI10' || c === 'VIP10') {
       setAppliedCoupon(c);
+      setAppliedCouponObj(null);
       setCouponMsg({ type: 'success', text: `কুপন ${c} সফলভাবে প্রয়োগ করা হয়েছে! (১০% ছাড়)` });
     } else {
       setCouponMsg({ type: 'error', text: 'কুপন কোডটি সঠিক নয়। Try: TOOLZAI10' });
@@ -131,7 +153,16 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
   const unitPrice = landingPage.offerPrice;
   const rawSubtotal = unitPrice * quantity;
-  const discountAmount = appliedCoupon ? Math.round(rawSubtotal * 0.1) : 0;
+  let discountAmount = 0;
+  if (appliedCouponObj) {
+    if (appliedCouponObj.discountType === 'percent') {
+      discountAmount = Math.round(rawSubtotal * (appliedCouponObj.discountValue / 100));
+    } else {
+      discountAmount = Math.min(rawSubtotal, appliedCouponObj.discountValue);
+    }
+  } else if (appliedCoupon) {
+    discountAmount = Math.round(rawSubtotal * 0.1);
+  }
   const finalTotal = Math.max(0, rawSubtotal - discountAmount);
 
   const formatPrice = (p: number) => {
@@ -204,6 +235,10 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
     onPlaceOrder(newOrder);
 
+    if (appliedCoupon && onCouponUsed) {
+      onCouponUsed(appliedCoupon);
+    }
+
     // Step 2 in pay modal
     setTimeout(() => {
       setPayStep(2);
@@ -211,17 +246,18 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
     // Redirect to WhatsApp invoice
     setTimeout(() => {
-      const msg = encodeURIComponent(
+      const msg =
         `🎉 LANDING PAGE CAMPAIGN ORDER (#${orderId})\n\n` +
         `Product: ${landingPage.title}\n` +
         `Quantity: ${quantity}\n` +
         `Total Payable: ${formatPrice(finalTotal)}\n` +
+        (discountAmount > 0 ? `Discount (${appliedCoupon}): -${formatPrice(discountAmount)}\n` : '') +
         `Customer: ${cleanName}\n` +
         `WhatsApp: ${cleanPhone}\n` +
         `Gmail: ${cleanEmail}\n\n` +
-        `Please verify payment and dispatch activation link to Gmail.`
-      );
-      window.open(`${WHATSAPP_URL}?text=${msg}`, '_blank', 'noopener,noreferrer');
+        `Please verify payment and dispatch activation link to Gmail.`;
+      const targetUrl = getWhatsAppUrl(settings?.whatsappNumber, msg);
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
       setIsSubmitting(false);
       setShowPayModal(false);
     }, 2400);
@@ -531,7 +567,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <a
-              href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Hello ToolzAi BD, I want help regarding ${landingPage.title}`)}`}
+              href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAi BD, I want help regarding ${landingPage.title}`)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-md transition-all"
@@ -832,8 +868,14 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             <button onClick={onGoHome} className="hover:text-[#00C853]">Main Store</button>
             <span>•</span>
             <button onClick={onOpenAdmin} className="hover:text-[#00C853]">Admin Dashboard</button>
+            {onOpenPolicy && (
+              <>
+                <span>•</span>
+                <button onClick={onOpenPolicy} className="hover:text-[#00C853]">ওয়ারেন্টি ও রিফান্ড পলিসি</button>
+              </>
+            )}
             <span>•</span>
-            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="hover:text-[#00C853]">WhatsApp Support</a>
+            <a href={getWhatsAppUrl(settings?.whatsappNumber)} target="_blank" rel="noopener noreferrer" className="hover:text-[#00C853]">WhatsApp Support</a>
           </div>
         </div>
       </footer>
@@ -851,7 +893,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
 
         <div className="flex items-center gap-2">
           <a
-            href={WHATSAPP_URL}
+            href={getWhatsAppUrl(settings?.whatsappNumber)}
             target="_blank"
             rel="noopener noreferrer"
             className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-md"

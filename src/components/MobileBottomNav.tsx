@@ -1,6 +1,7 @@
 import React from 'react';
 import { Store, Layers, Search, ShoppingBag, MessageCircle } from 'lucide-react';
-import { WHATSAPP_URL } from '../data/products';
+import { StoreSettings } from '../types';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 
 interface MobileBottomNavProps {
   cartCount: number;
@@ -8,6 +9,7 @@ interface MobileBottomNavProps {
   onOpenSearch: () => void;
   onOpenCategories: () => void;
   onGoHome: () => void;
+  settings?: StoreSettings;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -16,7 +18,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenSearch,
   onOpenCategories,
   onGoHome,
+  settings,
 }) => {
+  const whatsappUrl = getWhatsAppUrl(settings?.whatsappNumber);
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-[#E2E8F0] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1.5 flex items-center justify-around text-slate-600">
       
@@ -65,7 +70,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* WhatsApp */}
       <a
-        href={WHATSAPP_URL}
+        href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="flex flex-col items-center justify-center p-1.5 text-xs text-[#25D366] active:scale-95 transition-all"

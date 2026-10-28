@@ -12,6 +12,7 @@ import { QuickOrderModal } from './components/QuickOrderModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderTrackingModal } from './components/OrderTrackingModal';
+import { PolicyModal } from './components/PolicyModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { FeaturesSection } from './components/FeaturesSection';
 import { CustomerReviews } from './components/CustomerReviews';
@@ -156,6 +157,7 @@ export function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [isTrackOrderOpen, setIsTrackOrderOpen] = useState<boolean>(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState<boolean>(false);
   const [checkoutDiscount, setCheckoutDiscount] = useState<number>(0);
   const [checkoutCoupon, setCheckoutCoupon] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -345,9 +347,28 @@ export function App() {
     setToastMessage('Campaign deleted.');
   };
 
+  const handleCouponUsed = (couponCode: string) => {
+    if (!couponCode) return;
+    setCoupons((prev) => {
+      const codeUpper = couponCode.trim().toUpperCase();
+      const next = prev.map((c) => {
+        if (c.code.toUpperCase() === codeUpper) {
+          const updated: Coupon = { ...c, usageCount: (c.usageCount || 0) + 1 };
+          upsertCloudCoupon(updated).catch(console.error);
+          return updated;
+        }
+        return c;
+      });
+      return next;
+    });
+  };
+
   const handlePlaceOrder = (newOrder: Order) => {
     setOrders((prev) => [newOrder, ...prev]);
     insertCloudOrder(newOrder).catch(console.error);
+    if (checkoutCoupon) {
+      handleCouponUsed(checkoutCoupon);
+    }
   };
 
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
@@ -593,6 +614,15 @@ export function App() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onOpenAdmin={openAdmin}
+          coupons={coupons}
+          settings={settings}
+          onOpenPolicy={() => setIsPolicyModalOpen(true)}
+          onCouponUsed={handleCouponUsed}
+        />
+        <PolicyModal
+          isOpen={isPolicyModalOpen}
+          onClose={() => setIsPolicyModalOpen(false)}
+          settings={settings}
         />
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       </>
@@ -662,10 +692,16 @@ export function App() {
         onSelectProduct={(p) => setActiveModalProduct(p)}
         onOpenTrackOrder={() => setIsTrackOrderOpen(true)}
         onOpenAdmin={openAdmin}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
       />
 
       {/* 2. Hero Section */}
-      <Hero onExploreClick={scrollToProducts} />
+      <Hero
+        onExploreClick={scrollToProducts}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
+      />
 
       {/* 3. Products Catalog Section */}
       <main ref={productSectionRef} className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 w-full">
@@ -820,6 +856,8 @@ export function App() {
           scrollToProducts();
         }}
         onOpenAdmin={openAdmin}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
       />
 
       {/* 8. Woodmart Mobile Sticky Bottom Navigation Bar */}
@@ -838,6 +876,7 @@ export function App() {
           setSearchQuery('');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+        settings={settings}
       />
 
       {/* Quick Order Popup Modal */}
@@ -846,6 +885,10 @@ export function App() {
         onClose={() => setQuickOrderProduct(null)}
         onOrderSuccess={(msg) => setToastMessage(msg)}
         onPlaceOrder={handlePlaceOrder}
+        coupons={coupons}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
+        onCouponUsed={handleCouponUsed}
       />
 
       {/* Product Details & Specs Modal */}
@@ -853,6 +896,8 @@ export function App() {
         product={activeModalProduct}
         onClose={() => setActiveModalProduct(null)}
         onAddToCart={handleAddToCart}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
       />
 
       {/* Cart Drawer */}
@@ -863,6 +908,9 @@ export function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onOpenCheckout={handleOpenCheckout}
+        coupons={coupons}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
       />
 
       {/* Checkout Modal */}
@@ -874,6 +922,15 @@ export function App() {
         couponCode={checkoutCoupon}
         onOrderSuccess={() => setToastMessage('Order received! Redirecting to WhatsApp...')}
         onPlaceOrder={handlePlaceOrder}
+        settings={settings}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
+      />
+
+      {/* Customer Trust, Warranty & Refund Policy Modal */}
+      <PolicyModal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        settings={settings}
       />
 
       {/* Order Tracking Modal (With Privacy Protection & Two-Factor Verification) */}
@@ -927,7 +984,7 @@ export function App() {
 
       {/* Sticky WhatsApp Floater (Desktop/Tablet) */}
       <div className="hidden md:block">
-        <FloatingWhatsApp />
+        <FloatingWhatsApp settings={settings} />
       </div>
 
       {/* Toast Notification */}
