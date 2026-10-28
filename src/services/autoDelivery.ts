@@ -331,37 +331,44 @@ export async function sendDeliveryEmailViaResend(params: {
   });
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('/api/verify-and-deliver', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: senderEmail,
-        to: [order.customerEmail],
+        resendApiKey: apiKey,
+        senderEmail,
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        orderId: order.id,
+        totalAmount: order.total,
+        credentialsText,
+        instructionsText,
+        storeName,
         subject: `🎉 Your Digital Product Credentials (#${order.id}) - ${storeName}`,
-        html: html,
+        html,
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.error('Resend API returned error:', data);
+      console.error('Email delivery error:', data);
+      const errMsg = data.error || data.message || `HTTP ${response.status}`;
       return {
         success: false,
-        message: data.message || `Resend API Error (${response.status})`,
+        message: `ইমেইল পাঠাতে ব্যর্থ: ${errMsg}`,
       };
     }
 
     return {
       success: true,
       message: 'গ্রাহকের ইমেইলে প্রোডাক্ট সফলভাবে পাঠানো হয়েছে!',
-      emailId: data.id,
+      emailId: data.id || data.emailId,
     };
   } catch (err: any) {
-    console.error('Resend fetch failed:', err);
+    console.error('Resend delivery failed:', err);
     return {
       success: false,
       message: `ইমেইল পাঠাতে ব্যর্থ: ${err.message || 'Network error'}`,

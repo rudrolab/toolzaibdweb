@@ -20,7 +20,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { resendApiKey, senderEmail, customerEmail, customerName, orderId, credentialsText, instructionsText, storeName, totalAmount } = req.body;
+    const {
+      resendApiKey,
+      senderEmail,
+      customerEmail,
+      customerName,
+      orderId,
+      credentialsText,
+      instructionsText,
+      storeName,
+      totalAmount,
+      subject: customSubject,
+      html: customHtml
+    } = req.body;
 
     if (!resendApiKey) {
       return res.status(400).json({ error: 'Missing Resend API Key' });
@@ -30,7 +42,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing customer email' });
     }
 
-    const html = `
+    const emailSubject = customSubject || `🎉 Your Digital Product Credentials (#${orderId}) - ${storeName || 'ToolzAi BD'}`;
+
+    const html = customHtml || `
 <!DOCTYPE html>
 <html>
 <head>
@@ -87,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         from: senderEmail || 'ToolzAi BD <onboarding@resend.dev>',
         to: [customerEmail],
-        subject: `🎉 Your Digital Product Credentials (#${orderId}) - ${storeName || 'ToolzAi BD'}`,
+        subject: emailSubject,
         html: html,
       }),
     });
@@ -95,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const resendData = await resendRes.json();
 
     if (!resendRes.ok) {
-      return res.status(resendRes.status).json({ error: resendData.message || 'Resend error', details: resendData });
+      return res.status(resendRes.status).json({ error: resendData.message || resendData.name || 'Resend error', details: resendData });
     }
 
     return res.status(200).json({ success: true, emailId: resendData.id });

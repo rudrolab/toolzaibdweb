@@ -305,6 +305,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setTestEmailResult({ success: false, msg: 'Resend API Key প্রদান করুন।' });
       return;
     }
+
+    const targetEmail = window.prompt(
+      'যে ইমেইলে টেস্ট ডেলিভারি দেখতে চান সেটি লিখুন (Resend-এর ফ্রি টেস্ট মোডে আপনার Resend একাউন্টের জিমেইলটি দিন):',
+      ''
+    );
+    if (!targetEmail || !targetEmail.trim()) {
+      return;
+    }
+
     setIsSendingTestEmail(true);
     setTestEmailResult(null);
     try {
@@ -312,7 +321,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         id: 'TZ-TEST-' + Math.floor(1000 + Math.random() * 9000),
         customerName: 'Admin Tester',
         customerPhone: whatsappNumber || '01886822838',
-        customerEmail: 'delivered@example.com',
+        customerEmail: targetEmail.trim(),
         items: [
           { productId: 'test-1', title: 'Test Product (Canva Pro / Gemini)', quantity: 1, price: 999 }
         ],
