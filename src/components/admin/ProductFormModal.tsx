@@ -82,6 +82,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [features, setFeatures] = useState<string[]>([]);
   const [newFeature, setNewFeature] = useState('');
 
+  // Digital delivery & Credentials Vault
+  const [digitalCredential, setDigitalCredential] = useState('');
+  const [activationInstructions, setActivationInstructions] = useState('');
+
   useEffect(() => {
     if (productToEdit) {
       setTitle(productToEdit.title);
@@ -101,6 +105,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setDiscountPercent(productToEdit.discountPercent || 50);
       setVariants(productToEdit.variants || []);
       setFeatures(productToEdit.features || []);
+      setDigitalCredential(productToEdit.digitalCredential || '');
+      setActivationInstructions(productToEdit.activationInstructions || '');
     } else {
       // Default new product values
       setTitle('');
@@ -118,6 +124,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setCurrentPrice(999);
       setOriginalPrice(2000);
       setDiscountPercent(50);
+      setDigitalCredential('');
+      setActivationInstructions('১. আপনার জিমেইল ইনবক্স চেক করে এক্টিভেশন লিঙ্কে ক্লিক করুন।\n২. পার্সোনাল একাউন্টে লগিন করে অ্যাক্টিভেশন নিশ্চিত করুন।\n৩. কোনো সহায়তার প্রয়োজন হলে হোয়াটসঅ্যাপে অর্ডার আইডি লিখে মেসেজ দিন।');
       setVariants([
         { id: 'v-1', name: '1 Month Subscription', price: 999, originalPrice: 2000, duration: '1 Month', isPopular: true },
         { id: 'v-2', name: '3 Months Subscription', price: 2499, originalPrice: 5000, duration: '3 Months' },
@@ -214,6 +222,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       colorTheme: 'from-emerald-500 to-teal-700',
       iconName: 'Zap',
       imageUrl: imageUrl.trim() || './products/Google-storage-mix-pro-bd-1-home-430-q80.webp',
+      digitalCredential: digitalCredential.trim() || undefined,
+      activationInstructions: activationInstructions.trim() || undefined,
     };
 
     onSave(newProduct);
@@ -585,6 +595,49 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </button>
                 </span>
               ))}
+            </div>
+          </div>
+
+          {/* ⚡ Automated Digital Delivery & Credentials Vault */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#F0FDF4] to-[#F8FAFC] border border-[#86EFAC] space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#E6FCED] border border-[#86EFAC] flex items-center justify-center text-[#00C853] font-black text-sm">
+                ⚡
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-[#0F172A]">
+                  Automated Email Delivery Credentials (অটোমেটেড ইমেইল ডেলিভারি তথ্য)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  পেমেন্ট সফল হলে গ্রাহকের জিমেইলে স্বয়ংক্রিয়ভাবে নিচের লাইসেন্স কী বা ইনভাইট লিংক চলে যাবে।
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#0F172A] mb-1">
+                🔑 Digital License Key / Invite Link / Account Credentials:
+              </label>
+              <textarea
+                rows={3}
+                value={digitalCredential}
+                onChange={(e) => setDigitalCredential(e.target.value)}
+                placeholder="উদাহরণ: https://canva.com/brand/join?invite=XYZ... অথবা License: W269N-WFGWX-YVC9B... অথবা ID/Password"
+                className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:outline-none focus:border-[#00C853]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#0F172A] mb-1">
+                📖 Step-by-Step Activation Instructions (ইমেইলে প্রদর্শিত নির্দেশিকা):
+              </label>
+              <textarea
+                rows={2}
+                value={activationInstructions}
+                onChange={(e) => setActivationInstructions(e.target.value)}
+                placeholder="১. লিঙ্কে ক্লিক করে আপনার জিমেইলে জয়েন করুন। ২. ইনস্ট্যান্ট অ্যাক্টিভেশন নিশ্চিত হবে।"
+                className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-[#00C853]"
+              />
             </div>
           </div>
 

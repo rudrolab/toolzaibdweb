@@ -26,7 +26,10 @@ import {
   Key,
   Database,
   Download,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Zap,
+  Send
 } from 'lucide-react';
 import { Product, Order, OrderStatus, Coupon, StoreSettings, LandingPage } from '../../types';
 import { ProductFormModal } from './ProductFormModal';
@@ -34,6 +37,7 @@ import { OrderDetailsModal } from './OrderDetailsModal';
 import { LandingPageFormModal } from './LandingPageFormModal';
 import { Icon } from '../Icon';
 import { hashPassword } from '../../utils/security';
+import { sendDeliveryEmailViaResend, resolveOrderCredentials } from '../../services/autoDelivery';
 import {
   saveSupabaseConfig,
   testSupabaseConnection,
@@ -117,6 +121,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [noticeText, setNoticeText] = useState(settings.announcementNotice);
   const [isNoticeActive, setIsNoticeActive] = useState(settings.isNoticeActive);
   const [settingsSaved, setSettingsSaved] = useState(false);
+
+  // Resend Email Settings
+  const [resendApiKey, setResendApiKey] = useState(settings.resendApiKey || '');
+  const [senderEmail, setSenderEmail] = useState(settings.senderEmail || 'ToolzAi BD <onboarding@resend.dev>');
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; msg: string } | null>(null);
+
+  // Firebase Firestore Gateway Settings
+  const [autoVerifyEnabled, setAutoVerifyEnabled] = useState(settings.autoVerifyEnabled ?? true);
+  const [firebaseApiKey, setFirebaseApiKey] = useState(settings.firebaseApiKey || '');
+  const [firebaseProjectId, setFirebaseProjectId] = useState(settings.firebaseProjectId || '');
+  const [firestoreCollectionName, setFirestoreCollectionName] = useState(settings.firestoreCollectionName || 'transactions');
+  const [firestoreTrxIdField, setFirestoreTrxIdField] = useState(settings.firestoreTrxIdField || 'trxId');
+  const [firestoreAmountField, setFirestoreAmountField] = useState(settings.firestoreAmountField || 'amount');
 
   // ================= STATISTICS COMPUTATION =================
   const stats = useMemo(() => {
@@ -245,9 +263,88 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       rocketNumber,
       announcementNotice: noticeText,
       isNoticeActive,
+      resendApiKey: resendApiKey.trim() || undefined,
+      senderEmail: senderEmail.trim() || undefined,
+      autoVerifyEnabled,
+      firebaseApiKey: firebaseApiKey.trim() || undefined,
+      firebaseProjectId: firebaseProjectId.trim() || undefined,
+      firestoreCollectionName: firestoreCollectionName.trim() || 'transactions',
+      firestoreTrxIdField: firestoreTrxIdField.trim() || 'trxId',
+      firestoreAmountField: firestoreAmountField.trim() || 'amount',
     });
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2500);
+  };
+
+  const handleSendManualDeliveryEmail = async (order: Order) => {
+    if (!resendApiKey) {
+      alert('Resend API Key কনফিগার করা নেই। Settings ট্যাবে গিয়ে Resend API Key দিন।');
+      return;
+    }
+    const { credentialsText, instructionsText } = resolveOrderCredentials(order, products);
+    const res = await sendDeliveryEmailViaResend({
+      settings: {
+        ...settings,
+        resendApiKey,
+        senderEmail,
+      },
+      order,
+      credentialsText,
+      instructionsText,
+    });
+    if (res.success) {
+      onUpdateOrderStatus(order.id, 'delivered');
+      alert(`✅ ডেলিভারি ইমেইল সফলভাবে পাঠানো হয়েছে: ${order.customerEmail}`);
+    } else {
+      alert(`❌ ডেলিভারি ইমেইল পাঠানো যায়নি: ${res.message}`);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!resendApiKey) {
+      setTestEmailResult({ success: false, msg: 'Resend API Key প্রদান করুন।' });
+      return;
+    }
+    setIsSendingTestEmail(true);
+    setTestEmailResult(null);
+    try {
+      const dummyOrder: Order = {
+        id: 'TZ-TEST-' + Math.floor(1000 + Math.random() * 9000),
+        customerName: 'Admin Tester',
+        customerPhone: whatsappNumber || '01886822838',
+        customerEmail: 'delivered@example.com',
+        items: [
+          { productId: 'test-1', title: 'Test Product (Canva Pro / Gemini)', quantity: 1, price: 999 }
+        ],
+        subtotal: 999,
+        discount: 0,
+        total: 999,
+        paymentMethod: 'bKash Auto Gateway (Test)',
+        status: 'delivered',
+        createdAt: new Date().toISOString(),
+      };
+
+      const res = await sendDeliveryEmailViaResend({
+        settings: {
+          ...settings,
+          resendApiKey,
+          senderEmail,
+        },
+        order: dummyOrder,
+        credentialsText: 'TEST LICENSE KEY: W269N-WFGWX-YVC9B-4J6C9-T83GX\nInvite Link: https://canva.com/brand/join?test=sample',
+        instructionsText: '১. এটি একটি টেস্ট ডেলিভারি ইমেইল।\n২. আপনার Resend ইন্টিগ্রেশন ১০০% সক্রিয় রয়েছে!',
+      });
+
+      if (res.success) {
+        setTestEmailResult({ success: true, msg: `টেস্ট ইমেইল সফলভাবে পাঠানো হয়েছে (${res.emailId})!` });
+      } else {
+        setTestEmailResult({ success: false, msg: `ইমেইল পাঠানো যায়নি: ${res.message}` });
+      }
+    } catch (e: any) {
+      setTestEmailResult({ success: false, msg: e.message || 'Error occurred' });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
   };
 
   // Security / Admin Password Change state
@@ -1169,7 +1266,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <option value="cancelled">Cancelled</option>
                             </select>
                           </td>
-                          <td className="p-3 text-right pr-4 whitespace-nowrap">
+                          <td className="p-3 text-right pr-4 whitespace-nowrap space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSendManualDeliveryEmail(o)}
+                              className="px-2.5 py-1.5 rounded-lg bg-[#E6FCED] border border-[#86EFAC] text-[#15803D] hover:bg-[#DCFCE7] text-xs font-bold transition-all shadow-sm inline-flex items-center gap-1"
+                              title="Send credentials email to customer"
+                            >
+                              <Zap className="w-3.5 h-3.5 text-[#00C853]" />
+                              <span>Email</span>
+                            </button>
                             <button
                               onClick={() => setViewingOrder(o)}
                               className="px-2.5 py-1.5 rounded-lg bg-white border border-[#CBD5E1] text-slate-700 hover:text-[#00C853] hover:border-[#86EFAC] text-xs font-bold transition-all shadow-sm"
@@ -1408,6 +1514,191 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onChange={(e) => setNoticeText(e.target.value)}
                   className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3.5 py-2 text-xs text-[#0F172A]"
                 />
+              </div>
+
+              {/* ⚡ Automated Gateway & Instant Email Delivery Settings */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#F0FDF4] to-[#F8FAFC] border-2 border-[#86EFAC] space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#86EFAC]/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#00C853] text-white flex items-center justify-center font-black">
+                      ⚡
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-black text-sm sm:text-base text-[#0F172A]">
+                        Automated Gateway & Instant Email Delivery (স্বয়ংক্রিয় পেমেন্ট ভেরিফিকেশন ও ইমেইল ডেলিভারি)
+                      </h4>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        Firebase Firestore থেকে TrxID ভেরিফাই করে Resend দিয়ে ৩ সেকেন্ডে ক্রেতার জিমেইলে লাইসেন্স কী পাঠায়
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#86EFAC] shadow-sm">
+                    <input
+                      type="checkbox"
+                      checked={autoVerifyEnabled}
+                      onChange={(e) => setAutoVerifyEnabled(e.target.checked)}
+                      className="rounded text-[#00C853] focus:ring-[#00C853] w-4 h-4"
+                    />
+                    <span className="text-xs font-bold text-[#15803D]">
+                      {autoVerifyEnabled ? 'Active (স্বক্রিয়)' : 'Disabled'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Resend Configuration */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-[#0F172A] flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-emerald-600" />
+                      1. Resend Email Service Configuration (Free 3,000 emails/mo)
+                    </span>
+                    <a
+                      href="https://resend.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-[#00C853] hover:underline font-bold inline-flex items-center gap-1"
+                    >
+                      Get Free Resend API Key <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Resend API Key (re_...)
+                      </label>
+                      <input
+                        type="password"
+                        value={resendApiKey}
+                        onChange={(e) => setResendApiKey(e.target.value)}
+                        placeholder="re_123456789_abcdef..."
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Sender From Email Address
+                      </label>
+                      <input
+                        type="text"
+                        value={senderEmail}
+                        onChange={(e) => setSenderEmail(e.target.value)}
+                        placeholder="ToolzAi BD <onboarding@resend.dev>"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Send Test Email button */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="text-[11px] text-slate-500">
+                      {testEmailResult && (
+                        <span className={testEmailResult.success ? 'text-emerald-700 font-bold' : 'text-red-600 font-bold'}>
+                          {testEmailResult.msg}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSendTestEmail}
+                      disabled={isSendingTestEmail || !resendApiKey}
+                      className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-[#CBD5E1] px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 shadow-sm disabled:opacity-50"
+                    >
+                      <Send className="w-3 h-3 text-[#00C853]" />
+                      <span>{isSendingTestEmail ? 'পাঠানো হচ্ছে...' : 'Send Test Delivery Email'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Firebase Firestore Configuration */}
+                <div className="space-y-3 pt-2 border-t border-[#86EFAC]/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-[#0F172A] flex items-center gap-1.5">
+                      <Database className="w-4 h-4 text-amber-600" />
+                      2. Personal Gateway Firebase Firestore Settings
+                    </span>
+                    <a
+                      href="https://console.firebase.google.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-amber-600 hover:underline font-bold inline-flex items-center gap-1"
+                    >
+                      Firebase Console <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Firebase Project ID *
+                      </label>
+                      <input
+                        type="text"
+                        value={firebaseProjectId}
+                        onChange={(e) => setFirebaseProjectId(e.target.value)}
+                        placeholder="e.g. my-gateway-123"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Firebase Web API Key (Optional)
+                      </label>
+                      <input
+                        type="password"
+                        value={firebaseApiKey}
+                        onChange={(e) => setFirebaseApiKey(e.target.value)}
+                        placeholder="AIzaSy..."
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Firestore Collection Name
+                      </label>
+                      <input
+                        type="text"
+                        value={firestoreCollectionName}
+                        onChange={(e) => setFirestoreCollectionName(e.target.value)}
+                        placeholder="transactions"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        TrxID Field Name
+                      </label>
+                      <input
+                        type="text"
+                        value={firestoreTrxIdField}
+                        onChange={(e) => setFirestoreTrxIdField(e.target.value)}
+                        placeholder="trxId"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Amount Field Name
+                      </label>
+                      <input
+                        type="text"
+                        value={firestoreAmountField}
+                        onChange={(e) => setFirestoreAmountField(e.target.value)}
+                        placeholder="amount"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               <div className="pt-2 flex items-center justify-between">
@@ -1672,6 +1963,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onClose={() => setViewingOrder(null)}
         onUpdateStatus={onUpdateOrderStatus}
         onUpdateNotes={onUpdateOrderNotes}
+        onSendDeliveryEmail={handleSendManualDeliveryEmail}
       />
 
     </div>

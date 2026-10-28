@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Copy, Zap, MessageCircle, AlertCircle, ShieldCheck, ExternalLink } from 'lucide-react';
+import { X, Check, Copy, Zap, MessageCircle, AlertCircle, ShieldCheck, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { Product, ProductVariant, Order, Coupon, StoreSettings } from '../types';
 import { ProductCardBanner } from './ProductCardBanner';
 import { getStorePaymentMethods, getWhatsAppUrl } from '../utils/paymentHelpers';
@@ -11,6 +11,11 @@ import {
   isSpamSubmission,
   checkRateLimit
 } from '../utils/security';
+import {
+  verifyPaymentInFirestore,
+  sendDeliveryEmailViaResend,
+  resolveOrderCredentials
+} from '../services/autoDelivery';
 
 interface QuickOrderModalProps {
   product: Product | null;
@@ -21,6 +26,7 @@ interface QuickOrderModalProps {
   settings?: StoreSettings;
   onOpenPolicy?: () => void;
   onCouponUsed?: (couponCode: string) => void;
+  products?: Product[];
 }
 
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
@@ -32,6 +38,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   settings,
   onOpenPolicy,
   onCouponUsed,
+  products = [],
 }) => {
   const paymentMethods = getStorePaymentMethods(settings);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(undefined);
@@ -46,11 +53,21 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   const [trxId, setTrxId] = useState('');
   const [copied, setCopied] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [completedOrderId, setCompletedOrderId] = useState('');
   const [whatsappOrderUrl, setWhatsappOrderUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [honeypot, setHoneypot] = useState('');
+
+  // Auto verification states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationStage, setVerificationStage] = useState<'verifying' | 'sending_email' | 'done'>('verifying');
+  const [autoDeliveredData, setAutoDeliveredData] = useState<{
+    credentials: string;
+    instructions: string;
+    emailSent: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (product?.variants && product.variants.length > 0) {
@@ -62,6 +79,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     setQuantity(1);
     setErrorMsg('');
     setOrderComplete(false);
+    setAutoDeliveredData(null);
     
     // Auto-apply TOOLZAI10 if available in coupons or as fallback
     const defaultCoupon = coupons.find((c) => c.code.toUpperCase() === 'TOOLZAI10' && c.isActive);
@@ -118,6 +136,12 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     setTimeout(() => setCopiedOrderId(false), 2000);
   };
 
+  const handleCopyCredentials = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 2000);
+  };
+
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -158,7 +182,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -168,7 +192,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     }
 
     // 2. Submission rate limiting
-    const rateCheck = checkRateLimit('quick_order_submission', 3000);
+    const rateCheck = checkRateLimit('quick_order_submission', 2000);
     if (!rateCheck.allowed) {
       setErrorMsg(`অপেক্ষা করুন, আরও ${rateCheck.waitSeconds} সেকেন্ড পর চেষ্টা করুন।`);
       return;
@@ -247,6 +271,77 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       createdAt: new Date().toISOString(),
     };
 
+    // ================= ⚡ AUTOMATED VERIFICATION & DELIVERY =================
+    const canAutoVerify = Boolean(
+      settings?.autoVerifyEnabled &&
+      settings?.firebaseProjectId &&
+      cleanTrx
+    );
+
+    if (canAutoVerify) {
+      setIsVerifying(true);
+      setVerificationStage('verifying');
+
+      try {
+        const verifyRes = await verifyPaymentInFirestore({
+          settings: settings!,
+          trxId: cleanTrx,
+          requiredAmount: finalTotal,
+          orderId,
+        });
+
+        if (verifyRes.success) {
+          setVerificationStage('sending_email');
+
+          const allProductsList = products.length > 0 ? products : [product];
+          const { credentialsText, instructionsText } = resolveOrderCredentials(newOrder, allProductsList);
+
+          let emailSent = false;
+          if (settings?.resendApiKey) {
+            const emailRes = await sendDeliveryEmailViaResend({
+              settings: settings!,
+              order: newOrder,
+              credentialsText,
+              instructionsText,
+            });
+            emailSent = emailRes.success;
+          }
+
+          newOrder.status = 'delivered';
+          newOrder.deliveryStatus = emailSent ? 'sent' : 'pending';
+          newOrder.deliveryCredentialsSent = credentialsText;
+          newOrder.verifiedAt = new Date().toISOString();
+
+          setAutoDeliveredData({
+            credentials: credentialsText,
+            instructions: instructionsText,
+            emailSent,
+          });
+
+          if (onPlaceOrder) {
+            onPlaceOrder(newOrder);
+          }
+
+          if (appliedCoupon && onCouponUsed) {
+            onCouponUsed(appliedCoupon.code);
+          }
+
+          setCompletedOrderId(orderId);
+          setWhatsappOrderUrl(targetWhatsAppUrl);
+          setOrderComplete(true);
+          setIsVerifying(false);
+          onOrderSuccess(`Order #${orderId} verified and delivered to email!`);
+          return;
+        } else {
+          setIsVerifying(false);
+          newOrder.notes = `Auto-verification notice: ${verifyRes.message}`;
+        }
+      } catch (err) {
+        console.warn('Auto verification error in QuickOrder:', err);
+        setIsVerifying(false);
+      }
+    }
+
     if (onPlaceOrder) {
       onPlaceOrder(newOrder);
     }
@@ -279,19 +374,78 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {orderComplete ? (
-          /* Order Complete State */
-          <div className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
-              <Check className="w-8 h-8 stroke-[3]" />
+        {isVerifying ? (
+          /* Automated Verification Loading Overlay */
+          <div className="p-8 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto animate-spin">
+              <Zap className="w-7 h-7" />
             </div>
-            
             <div className="space-y-1">
-              <h3 className="font-heading font-black text-xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
-              <p className="text-xs text-[#475569] leading-relaxed">
-                ধন্যবাদ! ডিজিটাল লাইসেন্স ক্রেডেনশিয়াল <strong className="text-[#00C853]">{customerEmail}</strong> এবং হোয়াটসঅ্যাপে ৫-১৫ মিনিটে পৌঁছে দেওয়া হবে।
+              <h3 className="font-heading font-black text-lg text-[#0F172A]">
+                {verificationStage === 'verifying'
+                  ? 'গেটওয়েতে পেমেন্ট যাচাই করা হচ্ছে...'
+                  : 'পেমেন্ট সফল! আপনার ইমেইলে প্রোডাক্ট পাঠানো হচ্ছে...'}
+              </h3>
+              <p className="text-xs text-slate-500">
+                অপেক্ষা করুন, কয়েক সেকেন্ডের মধ্যে লাইসেন্স পেয়ে যাবেন...
               </p>
             </div>
+          </div>
+        ) : orderComplete ? (
+          /* Order Complete State */
+          <div className="p-6 sm:p-8 text-center space-y-4">
+            
+            {autoDeliveredData ? (
+              /* Instant Delivery Celebratory Badge */
+              <div className="space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="bg-[#DCFCE7] text-[#15803D] text-[10.5px] font-black uppercase px-2.5 py-0.5 rounded-full inline-block">
+                    ⚡ Instant Delivery Completed
+                  </span>
+                  <h3 className="font-heading font-black text-xl text-[#0F172A]">
+                    পেমেন্ট ভেরিফাইড ও প্রডাক্ট ডেলিভার্ড!
+                  </h3>
+                  <p className="text-xs text-[#475569] leading-relaxed">
+                    আপনার ডিজিটাল লাইসেন্স / অ্যাক্টিভেশন লিঙ্ক সরাসরি <strong className="text-[#00C853]">{customerEmail}</strong> এ পাঠিয়ে দেওয়া হয়েছে।
+                  </p>
+                </div>
+
+                {/* Instant On-Screen Credential Box (Backup) */}
+                <div className="text-left bg-[#0F172A] border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-slate-300">
+                    <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                      <Zap className="w-3.5 h-3.5" /> অ্যাক্টিভেশন তথ্য (Backup):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(autoDeliveredData.credentials)}
+                      className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[11px]"
+                    >
+                      {copiedCreds ? <Check className="w-3 h-3 text-[#00C853]" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedCreds ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <pre className="text-xs font-mono text-cyan-300 whitespace-pre-wrap break-all m-0">
+                    {autoDeliveredData.credentials}
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
+                  <Check className="w-8 h-8 stroke-[3]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-heading font-black text-xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
+                  <p className="text-xs text-[#475569] leading-relaxed">
+                    ধন্যবাদ! ডিজিটাল লাইসেন্স ক্রেডেনশিয়াল <strong className="text-[#00C853]">{customerEmail}</strong> এবং হোয়াটসঅ্যাপে ৫-১৫ মিনিটে পৌঁছে দেওয়া হবে।
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Order ID Pill */}
             <div className="flex items-center justify-center gap-2 max-w-xs mx-auto p-2 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl">
@@ -325,10 +479,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 href={whatsappOrderUrl || getWhatsAppUrl(settings?.whatsappNumber)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold py-3 rounded-xl text-sm shadow-md transition-all animate-bounce"
+                className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold py-3 rounded-xl text-sm shadow-md transition-all"
               >
                 <MessageCircle className="w-4 h-4 fill-white" />
-                <span>Send Invoice via WhatsApp</span>
+                <span>WhatsApp Helpline</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
@@ -581,10 +735,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                       type="text"
                       value={trxId}
                       onChange={(e) => setTrxId(e.target.value)}
-                      placeholder="Transaction ID / TrxID (Optional)"
-                      className="bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs text-[#0F172A] focus:outline-none focus:border-[#00C853] uppercase font-mono"
+                      placeholder="Transaction ID / TrxID *"
+                      className="bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs text-[#0F172A] focus:outline-none focus:border-[#00C853] uppercase font-mono font-bold"
                     />
                   </div>
+
+                  {settings?.autoVerifyEnabled && settings?.firebaseProjectId && (
+                    <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center gap-1.5 font-bold">
+                      <Zap className="w-3.5 h-3.5 text-[#00C853] flex-shrink-0 animate-bounce" />
+                      <span>⚡ Instant TrxID Verification & Email Delivery Active</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -609,15 +770,16 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full relative overflow-hidden bg-gradient-to-r from-[#00C853] to-[#009624] hover:from-[#00E676] hover:to-[#00C853] text-white font-extrabold text-sm sm:text-base py-3.5 px-6 rounded-xl shadow-[0_10px_25px_rgba(7,148,71,0.35)] hover:shadow-[0_14px_30px_rgba(7,148,71,0.45)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  disabled={isVerifying}
+                  className="w-full relative overflow-hidden bg-gradient-to-r from-[#00C853] to-[#009624] hover:from-[#00E676] hover:to-[#00C853] text-white font-extrabold text-sm sm:text-base py-3.5 px-6 rounded-xl shadow-[0_10px_25px_rgba(7,148,71,0.35)] hover:shadow-[0_14px_30px_rgba(7,148,71,0.45)] transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Zap className="w-4 h-4 fill-white" />
-                  <span>Place Quick Order ({formatPrice(finalTotal)})</span>
+                  <span>Confirm & Verify Order ({formatPrice(finalTotal)})</span>
                 </button>
 
                 <div className="mt-2 text-center text-[10.5px] text-[#64748B] flex items-center justify-center gap-1">
                   <MessageCircle className="w-3 h-3 text-[#00C853]" />
-                  <span>Verified 5-15 min delivery directly to your WhatsApp & Email</span>
+                  <span>Instant 5-15 min delivery directly to your WhatsApp & Email</span>
                 </div>
               </div>
 

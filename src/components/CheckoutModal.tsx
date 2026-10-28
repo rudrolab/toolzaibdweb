@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, AlertCircle, ExternalLink } from 'lucide-react';
-import { CartItem, Order, StoreSettings } from '../types';
+import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { CartItem, Order, StoreSettings, Product } from '../types';
 import { getStorePaymentMethods, getWhatsAppUrl } from '../utils/paymentHelpers';
 import {
   sanitizeInput,
@@ -10,6 +10,11 @@ import {
   isSpamSubmission,
   checkRateLimit
 } from '../utils/security';
+import {
+  verifyPaymentInFirestore,
+  sendDeliveryEmailViaResend,
+  resolveOrderCredentials
+} from '../services/autoDelivery';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -21,6 +26,7 @@ interface CheckoutModalProps {
   onPlaceOrder?: (order: Order) => void;
   settings?: StoreSettings;
   onOpenPolicy?: () => void;
+  products?: Product[];
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -33,6 +39,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onPlaceOrder,
   settings,
   onOpenPolicy,
+  products = [],
 }) => {
   const paymentMethods = getStorePaymentMethods(settings);
   const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0].id);
@@ -43,11 +50,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [trxId, setTrxId] = useState('');
   const [copied, setCopied] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [completedOrderId, setCompletedOrderId] = useState('');
   const [whatsappOrderUrl, setWhatsappOrderUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [honeypot, setHoneypot] = useState('');
+
+  // Automated delivery states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationStage, setVerificationStage] = useState<'verifying' | 'sending_email' | 'done'>('verifying');
+  const [autoDeliveredData, setAutoDeliveredData] = useState<{
+    credentials: string;
+    instructions: string;
+    emailSent: boolean;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -72,7 +89,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setTimeout(() => setCopiedOrderId(false), 2000);
   };
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleCopyCredentials = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 2000);
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -82,7 +105,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
 
     // 2. Submission rate limiting
-    const rateCheck = checkRateLimit('checkout_order_submission', 3000);
+    const rateCheck = checkRateLimit('checkout_order_submission', 2000);
     if (!rateCheck.allowed) {
       setErrorMsg(`অপেক্ষা করুন, আরও ${rateCheck.waitSeconds} সেকেন্ড পর চেষ্টা করুন।`);
       return;
@@ -164,6 +187,74 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       createdAt: new Date().toISOString(),
     };
 
+    // ================= ⚡ AUTOMATED VERIFICATION & DELIVERY =================
+    const canAutoVerify = Boolean(
+      settings?.autoVerifyEnabled &&
+      settings?.firebaseProjectId &&
+      cleanTrx
+    );
+
+    if (canAutoVerify) {
+      setIsVerifying(true);
+      setVerificationStage('verifying');
+
+      try {
+        const verifyRes = await verifyPaymentInFirestore({
+          settings: settings!,
+          trxId: cleanTrx,
+          requiredAmount: finalTotal,
+          orderId,
+        });
+
+        if (verifyRes.success) {
+          setVerificationStage('sending_email');
+
+          const { credentialsText, instructionsText } = resolveOrderCredentials(newOrder, products);
+
+          let emailSent = false;
+          if (settings?.resendApiKey) {
+            const emailRes = await sendDeliveryEmailViaResend({
+              settings: settings!,
+              order: newOrder,
+              credentialsText,
+              instructionsText,
+            });
+            emailSent = emailRes.success;
+          }
+
+          newOrder.status = 'delivered';
+          newOrder.deliveryStatus = emailSent ? 'sent' : 'pending';
+          newOrder.deliveryCredentialsSent = credentialsText;
+          newOrder.verifiedAt = new Date().toISOString();
+
+          setAutoDeliveredData({
+            credentials: credentialsText,
+            instructions: instructionsText,
+            emailSent,
+          });
+
+          if (onPlaceOrder) {
+            onPlaceOrder(newOrder);
+          }
+
+          setCompletedOrderId(orderId);
+          setWhatsappOrderUrl(targetWhatsAppUrl);
+          setOrderComplete(true);
+          setIsVerifying(false);
+          onOrderSuccess();
+          return;
+        } else {
+          // Verification failed (not in Firestore yet)
+          setIsVerifying(false);
+          newOrder.notes = `Auto-verification notice: ${verifyRes.message}`;
+        }
+      } catch (err) {
+        console.warn('Auto verification error, falling back to manual order:', err);
+        setIsVerifying(false);
+      }
+    }
+
+    // Standard order placement (Manual verification via WhatsApp)
     if (onPlaceOrder) {
       onPlaceOrder(newOrder);
     }
@@ -193,19 +284,79 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {orderComplete ? (
-          /* Success Screen */
-          <div className="p-6 sm:p-8 text-center space-y-5">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
-              <Check className="w-8 h-8 stroke-[3]" />
+        {isVerifying ? (
+          /* Automated Verification Loading Overlay */
+          <div className="p-10 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto animate-spin">
+              <Zap className="w-8 h-8" />
             </div>
-
-            <div className="space-y-2">
-              <h3 className="font-heading font-black text-2xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
-              <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! আপনার অর্ডারটি গ্রহণ করা হয়েছে। দ্রুত ডেলিভারির জন্য নিচের হোয়াটসঅ্যাপ বাটনে ক্লিক করে ইনভয়েসটি পাঠিয়ে দিন।
+            <div className="space-y-1">
+              <h3 className="font-heading font-black text-xl text-[#0F172A]">
+                {verificationStage === 'verifying'
+                  ? 'গেটওয়েতে পেমেন্ট যাচাই করা হচ্ছে...'
+                  : 'পেমেন্ট সফল! আপনার ইমেইলে প্রোডাক্ট পাঠানো হচ্ছে...'}
+              </h3>
+              <p className="text-xs text-slate-500">
+                অনুগ্রহ করে অপেক্ষা করুন, ৫ সেকেন্ডের মধ্যে সম্পন্ন হবে...
               </p>
             </div>
+          </div>
+        ) : orderComplete ? (
+          /* Success Screen */
+          <div className="p-6 sm:p-8 text-center space-y-5">
+            
+            {autoDeliveredData ? (
+              /* Instant Delivery Celebratory Badge */
+              <div className="space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                  <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="bg-[#DCFCE7] text-[#15803D] text-[11px] font-black uppercase px-3 py-1 rounded-full inline-block">
+                    ⚡ Instant Automated Delivery Completed
+                  </span>
+                  <h3 className="font-heading font-black text-2xl text-[#0F172A]">
+                    পেমেন্ট ভেরিফাইড ও প্রডাক্ট ডেলিভার্ড!
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
+                    ধন্যবাদ <strong>{customerName || 'গ্রাহক'}</strong>! আপনার ক্রয়কৃত পণ্যের লাইসেন্স এবং অ্যাক্টিভেশন লিঙ্ক সরাসরি <span className="text-[#00C853] font-bold">{customerEmail}</span> এ পাঠিয়ে দেওয়া হয়েছে।
+                  </p>
+                </div>
+
+                {/* Instant On-Screen Credential Box (Backup) */}
+                <div className="text-left bg-[#0F172A] border border-slate-800 rounded-xl p-4 max-w-md mx-auto space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-300">
+                    <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                      <Zap className="w-3.5 h-3.5" /> আপনার অ্যাক্টিভেশন তথ্য (On-Screen Backup):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(autoDeliveredData.credentials)}
+                      className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[11px]"
+                    >
+                      {copiedCreds ? <Check className="w-3 h-3 text-[#00C853]" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedCreds ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <pre className="text-xs font-mono text-cyan-300 whitespace-pre-wrap break-all m-0">
+                    {autoDeliveredData.credentials}
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              /* Standard Order Received Screen */
+              <div className="space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                  <Check className="w-8 h-8 stroke-[3]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-heading font-black text-2xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
+                    ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! আপনার অর্ডারটি গ্রহণ করা হয়েছে। দ্রুত ডেলিভারির জন্য নিচের হোয়াটসঅ্যাপ বাটনে ক্লিক করে ইনভয়েসটি পাঠিয়ে দিন।
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Order ID Pill */}
             <div className="flex items-center justify-center gap-2 max-w-xs mx-auto p-2 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl">
@@ -233,7 +384,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="flex justify-between text-slate-600">
                 <span>Delivery Guarantee:</span>
                 <span className="text-[#15803D] font-bold flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 text-[#00C853]" /> 5-15 Minutes
+                  <Zap className="w-3.5 h-3.5 text-[#00C853]" /> 5-15 Minutes (100% Replacement Warranty)
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
@@ -248,10 +399,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 href={whatsappOrderUrl || getWhatsAppUrl(settings?.whatsappNumber)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-sm py-3 px-6 rounded-xl shadow-md transition-all animate-bounce"
+                className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-sm py-3 px-6 rounded-xl shadow-md transition-all"
               >
                 <MessageCircle className="w-4 h-4 fill-white" />
-                <span>Send Invoice via WhatsApp</span>
+                <span>WhatsApp Helpline</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
@@ -369,7 +520,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] focus:bg-white"
                   />
                   <span className="text-[10.5px] text-slate-500 mt-1 block">
-                    (Account credentials, license keys, and instructions will be sent to this email & WhatsApp)
+                    (Account credentials, license keys, and instructions will be sent to this email)
                   </span>
                 </div>
               </div>
@@ -449,7 +600,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <div className="pt-2 border-t border-[#E2E8F0] text-[11px] text-slate-600 space-y-1">
                     <p>1. Open your <strong>{activeMethod.name} App</strong> and select <strong>Send Money</strong>.</p>
                     <p>2. Send <strong>{formatPrice(finalTotal)}</strong> to the copied number above.</p>
-                    <p>3. Put your Sender Number & TrxID below (optional: you can also send screenshot directly on WhatsApp).</p>
+                    <p>3. Put your Sender Number & TrxID below for instant verification.</p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -467,11 +618,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         type="text"
                         value={trxId}
                         onChange={(e) => setTrxId(e.target.value)}
-                        placeholder="Transaction ID (TrxID)"
-                        className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] uppercase font-mono"
+                        placeholder="Transaction ID (TrxID) *"
+                        className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] uppercase font-mono font-bold"
                       />
                     </div>
                   </div>
+
+                  {settings?.autoVerifyEnabled && settings?.firebaseProjectId && (
+                    <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center gap-1.5 font-bold">
+                      <Zap className="w-3.5 h-3.5 text-[#00C853] flex-shrink-0 animate-bounce" />
+                      <span>⚡ Instant TrxID Verification & Automated Email Delivery is ACTIVE</span>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -496,9 +654,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               {/* Submit CTA */}
               <button
                 type="submit"
-                className="w-full bg-[#00C853] hover:bg-[#00B248] text-white font-heading font-black text-sm py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                disabled={isVerifying}
+                className="w-full bg-[#00C853] hover:bg-[#00B248] text-white font-heading font-black text-sm py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
               >
-                <span>Confirm Order & Get Delivery ({formatPrice(finalTotal)})</span>
+                <span>Confirm Order & Verify Payment ({formatPrice(finalTotal)})</span>
               </button>
 
             </form>

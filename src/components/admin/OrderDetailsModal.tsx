@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, MessageCircle, Clock } from 'lucide-react';
+import { X, MessageCircle, Clock, Zap } from 'lucide-react';
 import { Order, OrderStatus } from '../../types';
 
 interface OrderDetailsModalProps {
@@ -7,6 +7,7 @@ interface OrderDetailsModalProps {
   onClose: () => void;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   onUpdateNotes: (orderId: string, notes: string) => void;
+  onSendDeliveryEmail?: (order: Order) => void;
 }
 
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
@@ -14,6 +15,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   onClose,
   onUpdateStatus,
   onUpdateNotes,
+  onSendDeliveryEmail,
 }) => {
   if (!order) return null;
 
@@ -105,7 +107,19 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               </div>
               <div className="sm:col-span-2">
                 <span className="text-slate-400 block text-[11px]">Delivery Email</span>
-                <span className="font-mono font-medium text-slate-700">{order.customerEmail}</span>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <span className="font-mono font-medium text-slate-700">{order.customerEmail}</span>
+                  {onSendDeliveryEmail && (
+                    <button
+                      type="button"
+                      onClick={() => onSendDeliveryEmail(order)}
+                      className="inline-flex items-center gap-1.5 bg-[#00C853] hover:bg-[#00B248] text-white px-3 py-1 rounded-lg text-xs font-bold shadow-sm transition-all active:scale-95"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>Send Credentials Email</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

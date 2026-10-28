@@ -5,6 +5,7 @@ export interface ProductVariant {
   price: number;
   duration?: string;
   isPopular?: boolean;
+  digitalCredential?: string; // Specific license key, invite link or account details for this variant
 }
 
 export interface Product {
@@ -34,6 +35,8 @@ export interface Product {
   colorTheme: string; // Tailwind gradient/accent class
   iconName: string;
   imageUrl: string;
+  digitalCredential?: string; // Global license key / invite link / account credentials
+  activationInstructions?: string; // Step-by-step activation guide included in delivery email
 }
 
 export interface CartItem {
@@ -68,6 +71,9 @@ export interface Order {
   status: OrderStatus;
   createdAt: string;
   notes?: string;
+  deliveryStatus?: 'pending' | 'sent' | 'failed';
+  deliveryCredentialsSent?: string;
+  verifiedAt?: string;
 }
 
 export interface Coupon {
@@ -91,6 +97,22 @@ export interface StoreSettings {
   adminPasswordHash?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+
+  // Resend Email Delivery Settings
+  resendApiKey?: string;
+  senderEmail?: string; // e.g. "ToolzAi BD <onboarding@resend.dev>" or "orders@yourdomain.com"
+  
+  // Firebase Firestore Payment Gateway Settings
+  autoVerifyEnabled?: boolean;
+  firebaseApiKey?: string;
+  firebaseAuthDomain?: string;
+  firebaseProjectId?: string;
+  firebaseStorageBucket?: string;
+  firebaseMessagingSenderId?: string;
+  firebaseAppId?: string;
+  firestoreCollectionName?: string; // e.g. "transactions" or "payments"
+  firestoreTrxIdField?: string; // e.g. "trxId" or "trx_id"
+  firestoreAmountField?: string; // e.g. "amount"
 }
 
 export interface LandingPageFeature {

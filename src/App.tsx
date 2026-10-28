@@ -882,6 +882,7 @@ export function App() {
       {/* Quick Order Popup Modal */}
       <QuickOrderModal
         product={quickOrderProduct}
+        products={products}
         onClose={() => setQuickOrderProduct(null)}
         onOrderSuccess={(msg) => setToastMessage(msg)}
         onPlaceOrder={handlePlaceOrder}
@@ -918,6 +919,7 @@ export function App() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         cartItems={cartItems}
+        products={products}
         discountAmount={checkoutDiscount}
         couponCode={checkoutCoupon}
         onOrderSuccess={() => setToastMessage('Order received! Redirecting to WhatsApp...')}
