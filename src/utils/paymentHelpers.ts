@@ -51,7 +51,7 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
     {
       id: 'upay',
       name: 'Upay',
-      number: bkash,
+      number: nagad, // UPay uses Nagad fallback when not separately configured
       type: 'Personal (Send Money)',
       fee: '0%',
       color: '#0072BC',

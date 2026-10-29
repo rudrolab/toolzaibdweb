@@ -695,6 +695,7 @@ export function App() {
         onOpenAdmin={openAdmin}
         settings={settings}
         onOpenPolicy={() => setIsPolicyModalOpen(true)}
+        products={products}
       />
 
       {/* 2. Hero Section */}

@@ -23,7 +23,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [imgError, setImgError] = useState(false);
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
+    return '৳' + price.toLocaleString('en-BD');
   };
 
   const isSoldOut = product.isSoldOut;
@@ -94,7 +94,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-center justify-center gap-1.5 w-full flex-wrap">
           <h3
             onClick={() => onSelectProduct(product)}
-            className="font-bold text-[13.5px] sm:text-[14px] text-[#0F172A] hover:text-[#00C853] cursor-pointer transition-colors line-clamp-1 max-w-[190px]"
+            className="font-bold text-[13.5px] sm:text-[14px] text-[#0F172A] hover:text-[#00C853] cursor-pointer transition-colors line-clamp-2 max-w-full"
             title={product.title}
           >
             {product.title}
@@ -110,7 +110,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="mt-1 mb-2.5 flex items-center justify-center gap-1.5 text-center min-h-[22px]">
           {product.hasVariants && product.priceRange ? (
             <div className="text-[14px] sm:text-[15px] font-black text-[#00C853]">
-              {formatPrice(product.priceRange.min)} <span className="text-xs text-gray-500 font-normal">through</span> {formatPrice(product.priceRange.max)}
+              <span className="text-xs text-[#64748B] font-medium">From </span>{formatPrice(product.priceRange.min)}
             </div>
           ) : product.currentPrice && product.originalPrice ? (
             <div className="flex items-center gap-1.5">

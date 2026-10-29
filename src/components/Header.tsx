@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ShoppingBag, Search, MessageCircle, Menu, X, Shield, Sparkles, PackageCheck, ArrowRight, Star, LayoutDashboard } from 'lucide-react';
-import { PRODUCTS_DATA } from '../data/products';
 import { Product, StoreSettings } from '../types';
 import { getWhatsAppUrl } from '../utils/paymentHelpers';
 import { Icon } from './Icon';
@@ -17,6 +16,7 @@ interface HeaderProps {
   onOpenAdmin: () => void;
   settings?: StoreSettings;
   onOpenPolicy?: () => void;
+  products?: Product[];
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdmin,
   settings,
   onOpenPolicy,
+  products = [],
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -47,18 +48,18 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'cards', label: 'Gift Cards' },
   ];
 
-  // Woodmart style AJAX live search matching items
+  // Live search uses the live products prop (reflects admin add/remove)
   const liveSearchResults = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
-    return PRODUCTS_DATA.filter(
+    return products.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         p.brand.toLowerCase().includes(q) ||
         p.categoryLabel.toLowerCase().includes(q) ||
         p.tagline.toLowerCase().includes(q)
     ).slice(0, 5); // top 5 instant results
-  }, [searchQuery]);
+  }, [searchQuery, products]);
 
   // Click outside to close dropdown
   useEffect(() => {
