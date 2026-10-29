@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, MessageCircle, ShieldCheck, Zap, CreditCard, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import {
+  X,
+  Copy,
+  Check,
+  MessageCircle,
+  Zap,
+  AlertCircle,
+  ExternalLink,
+  CheckCircle2,
+  Lock,
+  Globe,
+  Building2
+} from 'lucide-react';
 import { CartItem, Order, StoreSettings, Product } from '../types';
 import { getStorePaymentMethods, getWhatsAppUrl } from '../utils/paymentHelpers';
 import {
@@ -15,6 +27,49 @@ import {
   sendDeliveryEmailViaResend,
   resolveOrderCredentials
 } from '../services/autoDelivery';
+
+// Official Vector Provider Logos
+const BkashLogo = () => (
+  <div className="flex items-center justify-center">
+    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
+      <path d="M22 4L8 24h12l-3 7 19-19H24l4-12z" fill="#E2136E" />
+      <text x="42" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="18" fill="#E2136E" letterSpacing="-0.5px">bKash</text>
+    </svg>
+  </div>
+);
+
+const NagadLogo = () => (
+  <div className="flex items-center justify-center">
+    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
+      <circle cx="16" cy="16" r="11" fill="#F7941D" fillOpacity="0.2" />
+      <path d="M16 6c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10c0-3.8-2-6.6-4.8-8.5l-1.9 2.8c1.9 1.4 2.9 3.3 2.9 5.7 0 3.8-2.9 6.7-6.2 6.7s-6.2-2.9-6.2-6.7c0-3.8 2.9-6.7 6.2-6.7v-3.3z" fill="#F7941D" />
+      <circle cx="16" cy="16" r="2.8" fill="#ED1C24" />
+      <text x="36" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="17" fill="#F7941D" letterSpacing="-0.5px">নগদ</text>
+    </svg>
+  </div>
+);
+
+const RocketLogo = () => (
+  <div className="flex items-center justify-center">
+    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
+      <path d="M15 4c-4 5-5.5 10-5.5 15 0 4 2 8 5.5 9.5 3.5-1.5 5.5-5.5 5.5-9.5 0-5-1.5-10-5.5-15z" fill="#8C3494" />
+      <path d="M9.5 19l-4 4 1.2 2 4.8-2M20.5 19l4 4-1.2 2-4.8-2" stroke="#8C3494" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="15" cy="14" r="2.8" fill="#FFFFFF" />
+      <text x="34" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="17" fill="#8C3494" letterSpacing="-0.5px">রকেট</text>
+    </svg>
+  </div>
+);
+
+const UpayLogo = () => (
+  <div className="flex items-center justify-center">
+    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
+      <path d="M9 9v8a6.5 6.5 0 0013 0V9h-3.3v8a3.2 3.2 0 01-6.4 0V9H9z" fill="#0072BC" />
+      <circle cx="15.5" cy="6.5" r="2.2" fill="#FFC80A" />
+      <circle cx="15.5" cy="19.5" r="2.2" fill="#FFC80A" />
+      <text x="32" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="18" fill="#0072BC" letterSpacing="-0.5px">upay</text>
+    </svg>
+  </div>
+);
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -42,7 +97,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   products = [],
 }) => {
   const paymentMethods = getStorePaymentMethods(settings);
-  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0].id);
+  const [activeTab, setActiveTab] = useState<'mobile' | 'international' | 'netbanking'>('mobile');
+  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0]?.id || 'bkash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -72,7 +128,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const finalTotal = Math.max(0, rawSubtotal - discountAmount);
 
   const formatPrice = (p: number) => {
-    return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
+    return p.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '৳';
   };
 
   const activeMethod = paymentMethods.find((p) => p.id === selectedPayment) || paymentMethods[0];
@@ -120,7 +176,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     // 4. Strict Validation
     if (!cleanPhone) {
-      setErrorMsg('অনুগ্রহ করে আপনার হোয়াটসঅ্যাপ মোবাইল নম্বর প্রদান করুন।');
+      setErrorMsg('অনুগ্রহ করে আপনার হোয়াটসঅ্যাপ মোবাইল নম্বর লিখুন।');
       return;
     }
     if (!isValidBDPhone(cleanPhone)) {
@@ -128,40 +184,45 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
     if (!cleanEmail) {
-      setErrorMsg('অনুগ্রহ করে ডিজিটাল ডেলিভারির জন্য আপনার ইমেইল প্রদান করুন।');
+      setErrorMsg('অনুগ্রহ করে ডিজিটাল ডেলিভারির জন্য আপনার ইমেইল লিখুন।');
       return;
     }
     if (!isValidEmail(cleanEmail)) {
       setErrorMsg('অনুগ্রহ করে একটি সঠিক ইমেইল অ্যাড্রেস লিখুন (যেমন: yourname@gmail.com)।');
       return;
     }
-    if (cleanTrx && !isValidTrxId(cleanTrx)) {
+    if (!cleanTrx) {
+      setErrorMsg('অনুগ্রহ করে সেন্ড মানি করে Transaction ID (TrxID) প্রদান করুন।');
+      return;
+    }
+    if (!isValidTrxId(cleanTrx)) {
       setErrorMsg('ট্রানজেকশন আইডি (TrxID) ইংরেজি অক্ষর ও সংখ্যা হতে হবে (৬-২০ অক্ষর)।');
       return;
     }
 
-    const itemsSummary = cartItems
+    const orderId = 'TZ-' + Math.floor(100000 + Math.random() * 900000);
+
+    const itemListSummary = cartItems
       .map(
         (it) =>
-          `• ${it.product.title}${it.selectedVariant ? ` (${it.selectedVariant.name})` : ''} x${it.quantity} = ${formatPrice(it.price * it.quantity)}`
+          `• ${it.product.title}${it.selectedVariant ? ` (${it.selectedVariant.name})` : ''} x${it.quantity} - ${formatPrice(it.price * it.quantity)}`
       )
       .join('\n');
 
-    const orderId = 'TZ-' + Math.floor(100000 + Math.random() * 900000);
-
     const message =
-      `🎉 NEW ORDER SUBMITTED (#${orderId})\n\n` +
-      `Customer Name: ${cleanName || 'Customer'}\n` +
+      `🎉 TOOLZAI BD ORDER (#${orderId})\n\n` +
+      `Items:\n${itemListSummary}\n\n` +
+      `Subtotal: ${formatPrice(rawSubtotal)}\n` +
+      (discountAmount > 0 ? `Coupon Discount (${couponCode}): -${formatPrice(discountAmount)}\n` : '') +
+      `Total Payable: ${formatPrice(finalTotal)}\n\n` +
+      `Customer Details:\n` +
+      `Name: ${cleanName || 'Customer'}\n` +
       `WhatsApp Phone: ${cleanPhone}\n` +
       `Delivery Email: ${cleanEmail}\n\n` +
-      `ITEMS ORDERED:\n${itemsSummary}\n\n` +
-      `Subtotal: ${formatPrice(rawSubtotal)}\n` +
-      (discountAmount > 0 ? `Discount (${couponCode}): -${formatPrice(discountAmount)}\n` : '') +
-      `Total Payable: ${formatPrice(finalTotal)}\n\n` +
-      `Payment Method: ${activeMethod.name}\n` +
+      `Payment Method: ${activeMethod.name} Personal\n` +
       (cleanSender ? `Sender Number: ${cleanSender}\n` : '') +
       (cleanTrx ? `Transaction ID: ${cleanTrx}\n` : '') +
-      `\nPlease verify payment and deliver the digital credentials.`;
+      `\nPlease verify payment and deliver digital credentials instantly.`;
 
     const targetWhatsAppUrl = getWhatsAppUrl(settings?.whatsappNumber, message);
 
@@ -226,108 +287,110 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           newOrder.deliveryStatus = emailSent ? 'sent' : 'pending';
           newOrder.deliveryCredentialsSent = credentialsText;
           newOrder.verifiedAt = new Date().toISOString();
+          newOrder.notes = `⚡ Auto-Verified via Firebase Firestore (TrxID: ${cleanTrx}). Email: ${emailSent ? 'Sent' : 'Pending'}`;
+
+          if (onPlaceOrder) onPlaceOrder(newOrder);
 
           setAutoDeliveredData({
             credentials: credentialsText,
             instructions: instructionsText,
             emailSent,
           });
-
-          if (onPlaceOrder) {
-            onPlaceOrder(newOrder);
-          }
-
           setCompletedOrderId(orderId);
           setWhatsappOrderUrl(targetWhatsAppUrl);
           setOrderComplete(true);
           setIsVerifying(false);
-          onOrderSuccess();
           return;
         } else {
-          // Verification failed (not in Firestore yet)
-          setIsVerifying(false);
-          newOrder.notes = `Auto-verification notice: ${verifyRes.message}`;
+          newOrder.notes = `Auto-verify attempt failed: ${verifyRes.message}`;
         }
-      } catch (err) {
-        console.warn('Auto verification error, falling back to manual order:', err);
+      } catch (err: any) {
+        console.error('Auto verify pipeline error:', err);
+        newOrder.notes = `Auto-verify error: ${err.message || 'Unknown'}`;
+      } finally {
         setIsVerifying(false);
       }
     }
 
-    // Standard order placement (Manual verification via WhatsApp)
-    if (onPlaceOrder) {
-      onPlaceOrder(newOrder);
-    }
-
+    // Default Fallback
+    if (onPlaceOrder) onPlaceOrder(newOrder);
     setCompletedOrderId(orderId);
     setWhatsappOrderUrl(targetWhatsAppUrl);
     setOrderComplete(true);
     onOrderSuccess();
-
-    // Auto open WhatsApp with the formatted order invoice
-    setTimeout(() => {
-      window.open(targetWhatsAppUrl, '_blank', 'noopener,noreferrer');
-    }, 1200);
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
       
-      <div className="relative w-full max-w-xl bg-white border border-[#E2E8F0] rounded-2xl shadow-2xl overflow-hidden my-6">
+      {/* Background Pattern Wallpaper */}
+      <div
+        className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden my-auto"
+        style={{
+          backgroundImage: `radial-gradient(#E2E8F0 1px, transparent 1px)`,
+          backgroundSize: '20px 20px',
+        }}
+      >
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-[#F1F5F9] text-slate-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors"
-          aria-label="Close modal"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Top Search / Header Pill */}
+        <div className="p-4 sm:p-5 pb-0">
+          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 flex items-center justify-between shadow-inner">
+            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+              <Lock className="w-3.5 h-3.5 text-blue-600" />
+              <span>ToolzAi BD Secure 256-bit Encrypted Checkout</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-700 transition-colors"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
+        {/* Verification Loading State */}
         {isVerifying ? (
-          /* Automated Verification Loading Overlay */
-          <div className="p-10 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto animate-spin">
-              <Zap className="w-8 h-8" />
+          <div className="p-8 sm:p-12 text-center space-y-5 bg-white/95">
+            <div className="w-14 h-14 rounded-full bg-blue-50 border-2 border-[#0052CC] text-[#0052CC] flex items-center justify-center mx-auto animate-spin">
+              <Zap className="w-7 h-7" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-heading font-black text-xl text-[#0F172A]">
+              <h3 className="font-heading font-black text-lg text-[#0F172A]">
                 {verificationStage === 'verifying'
                   ? 'গেটওয়েতে পেমেন্ট যাচাই করা হচ্ছে...'
                   : 'পেমেন্ট সফল! আপনার ইমেইলে প্রোডাক্ট পাঠানো হচ্ছে...'}
               </h3>
               <p className="text-xs text-slate-500">
-                অনুগ্রহ করে অপেক্ষা করুন, ৫ সেকেন্ডের মধ্যে সম্পন্ন হবে...
+                অপেক্ষা করুন, কয়েক সেকেন্ডের মধ্যে লাইসেন্স পেয়ে যাবেন...
               </p>
             </div>
           </div>
         ) : orderComplete ? (
-          /* Success Screen */
-          <div className="p-6 sm:p-8 text-center space-y-5">
-            
+          /* Order Complete / Delivered State */
+          <div className="p-6 sm:p-8 text-center space-y-4 bg-white/95">
             {autoDeliveredData ? (
-              /* Instant Delivery Celebratory Badge */
               <div className="space-y-3">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
                 </div>
                 <div className="space-y-1">
-                  <span className="bg-[#DCFCE7] text-[#15803D] text-[11px] font-black uppercase px-3 py-1 rounded-full inline-block">
-                    ⚡ Instant Automated Delivery Completed
+                  <span className="bg-[#DCFCE7] text-[#15803D] text-[10.5px] font-black uppercase px-2.5 py-0.5 rounded-full inline-block">
+                    ⚡ Instant Delivery Completed
                   </span>
-                  <h3 className="font-heading font-black text-2xl text-[#0F172A]">
+                  <h3 className="font-heading font-black text-xl text-[#0F172A]">
                     পেমেন্ট ভেরিফাইড ও প্রডাক্ট ডেলিভার্ড!
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                    ধন্যবাদ <strong>{customerName || 'গ্রাহক'}</strong>! আপনার ক্রয়কৃত পণ্যের লাইসেন্স এবং অ্যাক্টিভেশন লিঙ্ক সরাসরি <span className="text-[#00C853] font-bold">{customerEmail}</span> এ পাঠিয়ে দেওয়া হয়েছে।
+                  <p className="text-xs text-[#475569] leading-relaxed">
+                    আপনার ডিজিটাল লাইসেন্স / অ্যাক্টিভেশন লিঙ্ক সরাসরি <strong className="text-blue-600">{customerEmail}</strong> এ পাঠিয়ে দেওয়া হয়েছে।
                   </p>
                 </div>
 
                 {/* Instant On-Screen Credential Box (Backup) */}
-                <div className="text-left bg-[#0F172A] border border-slate-800 rounded-xl p-4 max-w-md mx-auto space-y-2">
+                <div className="text-left bg-[#0F172A] border border-slate-800 rounded-xl p-3.5 space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-slate-300">
                     <span className="font-bold flex items-center gap-1.5 text-emerald-400">
-                      <Zap className="w-3.5 h-3.5" /> আপনার অ্যাক্টিভেশন তথ্য (On-Screen Backup):
+                      <Zap className="w-3.5 h-3.5" /> অ্যাক্টিভেশন তথ্য (Backup):
                     </span>
                     <button
                       type="button"
@@ -338,21 +401,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <span>{copiedCreds ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-                  <pre className="text-xs font-mono text-cyan-300 whitespace-pre-wrap break-all m-0">
+                  <pre className="font-mono text-xs text-emerald-300 whitespace-pre-wrap break-all bg-black/40 p-2.5 rounded-lg border border-slate-800/80">
                     {autoDeliveredData.credentials}
                   </pre>
+                  {autoDeliveredData.instructions && (
+                    <p className="text-[11px] text-slate-400 whitespace-pre-line pt-1 border-t border-slate-800/80">
+                      {autoDeliveredData.instructions}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
-              /* Standard Order Received Screen */
               <div className="space-y-3">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
                   <Check className="w-8 h-8 stroke-[3]" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="font-heading font-black text-2xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
                   <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                    ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! আপনার অর্ডারটি গ্রহণ করা হয়েছে। দ্রুত ডেলিভারির জন্য নিচের হোয়াটসঅ্যাপ বাটনে ক্লিক করে ইনভয়েসটি পাঠিয়ে দিন।
+                    ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! দ্রুত ডেলিভারির জন্য হোয়াটসঅ্যাপ বাটনে ক্লিক করে ইনভয়েসটি পাঠিয়ে দিন।
                   </p>
                 </div>
               </div>
@@ -372,28 +439,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </button>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-left max-w-md mx-auto text-xs space-y-2">
+            <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-left max-w-md mx-auto text-xs space-y-1.5">
               <div className="flex justify-between text-slate-600">
-                <span>Total Amount Paid/Due:</span>
-                <span className="font-black text-[#00C853] text-sm">{formatPrice(finalTotal)}</span>
+                <span>Total Amount:</span>
+                <span className="font-black text-blue-600 text-sm">{formatPrice(finalTotal)}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Delivery Email:</span>
                 <span className="font-bold text-[#0F172A]">{customerEmail}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Delivery Guarantee:</span>
-                <span className="text-[#15803D] font-bold flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 text-[#00C853]" /> 5-15 Minutes (100% Replacement Warranty)
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Support Hotline:</span>
-                <span className="text-[#0F172A] font-bold font-mono">{settings?.whatsappNumber || '+8801886822838'}</span>
-              </div>
             </div>
 
-            {/* Action buttons */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href={whatsappOrderUrl || getWhatsAppUrl(settings?.whatsappNumber)}
@@ -412,38 +468,54 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 Back to Store
               </button>
             </div>
-
-            {onOpenPolicy && (
-              <button
-                onClick={onOpenPolicy}
-                className="text-xs text-slate-500 hover:text-[#00C853] underline flex items-center justify-center gap-1 mx-auto pt-2"
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>ওয়ারেন্টি ও রিফান্ড পলিসি পড়ুন</span>
-              </button>
-            )}
           </div>
         ) : (
-          /* Checkout Form */
-          <div>
-            {/* Header */}
-            <div className="p-6 bg-gradient-to-r from-[#F0FDF4] via-[#F8FAFC] to-[#FFFFFF] border-b border-[#E2E8F0]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#E6FCED] border border-[#86EFAC] flex items-center justify-center text-[#00C853]">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-heading font-black text-lg sm:text-xl text-[#0F172A]">
-                    Checkout & Instant Delivery
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Pay securely using bKash, Nagad, or Rocket Send Money
-                  </p>
+          /* Payment Gateway Interface (1:1 Match with Screenshot) */
+          <div className="bg-white/95">
+            
+            {/* Gateway Brand Header */}
+            <div className="px-5 sm:px-6 pt-3 pb-3 flex items-center gap-3 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-heading font-black text-xs shadow-sm flex-shrink-0">
+                <span>PG</span>
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-lg text-[#0F172A] tracking-tight">
+                  Payment Gateway
+                </h3>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <a
+                    href={getWhatsAppUrl(settings?.whatsappNumber, 'Hello ToolzAIBD, I need help with payment.')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue-600 transition-colors"
+                  >
+                    সহায়তা
+                  </a>
+                  <span>•</span>
+                  {onOpenPolicy && (
+                    <button
+                      type="button"
+                      onClick={onOpenPolicy}
+                      className="hover:text-blue-600 transition-colors"
+                    >
+                      প্রশ্নাবলী
+                    </button>
+                  )}
+                  <span>•</span>
+                  {onOpenPolicy && (
+                    <button
+                      type="button"
+                      onClick={onOpenPolicy}
+                      className="hover:text-blue-600 transition-colors"
+                    >
+                      বিস্তারিত
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmitOrder} className="p-6 space-y-5 max-h-[72vh] overflow-y-auto">
+            <form onSubmit={handleSubmitOrder} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               
               {/* Invisible honeypot field for anti-bot spam protection */}
               <input
@@ -464,200 +536,294 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               )}
 
-              {/* Order total preview */}
-              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-500 font-medium">Payable Total ({cartItems.length} items):</span>
-                  <div className="text-xl font-black text-[#00C853]">{formatPrice(finalTotal)}</div>
-                </div>
-                {discountAmount > 0 && (
-                  <span className="text-xs text-[#15803D] bg-[#E6FCED] border border-[#86EFAC] px-2.5 py-1 rounded-md font-bold">
-                    Saved {formatPrice(discountAmount)}
-                  </span>
-                )}
+              {/* Category Navigation Tabs (The iconic Blue Bar from screenshot) */}
+              <div className="bg-[#0052CC] rounded-xl p-1 grid grid-cols-3 gap-1 shadow-md">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('mobile')}
+                  className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'mobile'
+                      ? 'bg-[#003B95] text-white shadow-sm'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  মোবাইল ব্যাংকিং
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('international')}
+                  className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'international'
+                      ? 'bg-[#003B95] text-white shadow-sm'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  ইন্টারন্যাশনাল
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('netbanking')}
+                  className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'netbanking'
+                      ? 'bg-[#003B95] text-white shadow-sm'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  নেট ব্যাংকিং
+                </button>
               </div>
 
-              {/* Step 1: Customer Info */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-[#00C853] text-white flex items-center justify-center text-[10px] font-black">1</span>
-                  Delivery Information
-                </h4>
+              {/* Tab 1: মোবাইল ব্যাংকিং (4 Grid Cards matching screenshot) */}
+              {activeTab === 'mobile' && (
+                <div className="space-y-3 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {/* Bkash Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPayment('bkash')}
+                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
+                        selectedPayment === 'bkash'
+                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <BkashLogo />
+                      <span className="text-[11px] font-semibold text-slate-600">Bkash Personal</span>
+                    </button>
 
+                    {/* Nagad Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPayment('nagad')}
+                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
+                        selectedPayment === 'nagad'
+                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <NagadLogo />
+                      <span className="text-[11px] font-semibold text-slate-600">Nagad Personal</span>
+                    </button>
+
+                    {/* Rocket Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPayment('rocket')}
+                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
+                        selectedPayment === 'rocket'
+                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <RocketLogo />
+                      <span className="text-[11px] font-semibold text-slate-600">Rocket Personal</span>
+                    </button>
+
+                    {/* UPay Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPayment('upay')}
+                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
+                        selectedPayment === 'upay'
+                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <UpayLogo />
+                      <span className="text-[11px] font-semibold text-slate-600">UPay Personal</span>
+                    </button>
+                  </div>
+
+                  {/* Provider Send Money Details Box */}
+                  <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[10.5px] text-slate-500 font-semibold block uppercase">
+                          {activeMethod.name} Personal Send Money Number:
+                        </span>
+                        <span className="text-base font-black font-mono text-[#0F172A] tracking-wider">
+                          {activeMethod.number}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyNumber(activeMethod.number || '')}
+                        className="flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-300 shadow-sm transition-all"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-600">কপি হয়েছে</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                            <span>কপি করুন</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="text-[11px] text-slate-600 pt-2 border-t border-slate-200/80 space-y-0.5">
+                      <p>১. আপনার <strong>{activeMethod.name} অ্যাপে</strong> গিয়ে <strong>Send Money</strong> সিলেক্ট করুন।</p>
+                      <p>২. নিচে উল্লেখিত স্বয়ংক্রিয় <strong>{formatPrice(finalTotal)}</strong> টাকা সেন্ড মানি করুন।</p>
+                      <p>৩. প্রাপ্ত <strong>Transaction ID (TrxID)</strong> নিচে লিখে পে চাপুন।</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: ইন্টারন্যাশনাল */}
+              {activeTab === 'international' && (
+                <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-4 text-center space-y-3 animate-in fade-in duration-150">
+                  <Globe className="w-8 h-8 text-blue-600 mx-auto" />
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-[#0F172A]">Binance Pay & USDT (TRC20 / BEP20)</h4>
+                    <p className="text-xs text-slate-600">
+                      আন্তর্জাতিক পেমেন্ট বা ক্রিপ্টোতে পে করতে চাইলে সরাসরি হোয়াটসঅ্যাপে যোগাযোগ করুন।
+                    </p>
+                  </div>
+                  <a
+                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAIBD, I want to pay ${formatPrice(finalTotal)} using Crypto USDT / Binance.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#0052CC] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Pay via WhatsApp Crypto Help</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Tab 3: নেট ব্যাংকিং */}
+              {activeTab === 'netbanking' && (
+                <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-4 text-center space-y-3 animate-in fade-in duration-150">
+                  <Building2 className="w-8 h-8 text-blue-600 mx-auto" />
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-[#0F172A]">City Touch / Islami Bank / Brac Bank</h4>
+                    <p className="text-xs text-slate-600">
+                      সরাসরি ব্যাংক ট্রান্সফারের মাধ্যমে পে করতে আমাদের অ্যাকাউন্ট বিস্তারিত পেতে হোয়াটসঅ্যাপে নক দিন।
+                    </p>
+                  </div>
+                  <a
+                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAIBD, I want to pay ${formatPrice(finalTotal)} via Bank Transfer.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#0052CC] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Get Bank Account Details</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Amount (BDT) Section (Exact Screenshot Match: Automatic Set) */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Amount (BDT)
+                  </label>
+                  <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" /> Automatic Set
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  readOnly
+                  value={finalTotal}
+                  className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-[#0F172A] cursor-not-allowed select-all focus:outline-none"
+                  placeholder="e.g. 13000"
+                />
+
+                {/* Light Blue Info Alert Banner (Matching screenshot) */}
+                <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] rounded-xl px-3.5 py-2 text-[11px] leading-relaxed flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span>
+                    স্বয়ংক্রিয় গেটওয়ে: সমপরিমাণ টাকা সেন্ড মানি করে TrxID দিন, সাথে সাথে ইমেইলে প্রোডাক্ট ডেলিভারি হবে।
+                  </span>
+                </div>
+              </div>
+
+              {/* Customer Details for Delivery */}
+              <div className="pt-2 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] text-slate-600 font-semibold mb-1">Your Full Name</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      আপনার নাম (ঐচ্ছিক)
+                    </label>
                     <input
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Julkar Nayen"
-                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] focus:bg-white"
+                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-[11px] text-slate-600 font-semibold mb-1">WhatsApp Mobile Number *</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      হোয়াটসঅ্যাপ নম্বর *
+                    </label>
                     <input
                       type="tel"
                       required
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="e.g. 017XXXXXXXX"
-                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] focus:bg-white"
+                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-600 font-semibold mb-1">Email Address for Credentials Delivery *</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    ডেলিভারি ইমেইল (যেখানে লাইসেন্স কি পাঠানো হবে) *
+                  </label>
                   <input
                     type="email"
                     required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     placeholder="e.g. yourname@gmail.com"
-                    className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] focus:bg-white"
-                  />
-                  <span className="text-[10.5px] text-slate-500 mt-1 block">
-                    (Account credentials, license keys, and instructions will be sent to this email)
-                  </span>
-                </div>
-              </div>
-
-              {/* Step 2: Payment Method */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-[#00C853] text-white flex items-center justify-center text-[10px] font-black">2</span>
-                  Select Payment Method (Bangladesh)
-                </h4>
-
-                {/* Payment Option Pills */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {paymentMethods.map((method) => {
-                    const isSelected = selectedPayment === method.id;
-                    return (
-                      <button
-                        type="button"
-                        key={method.id}
-                        onClick={() => setSelectedPayment(method.id)}
-                        className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
-                          isSelected
-                            ? 'bg-[#E6FCED] border-[#00C853] shadow-sm'
-                            : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#86EFAC]'
-                        }`}
-                      >
-                        <span className="text-xs font-black" style={{ color: method.color }}>
-                          {method.logoText}
-                        </span>
-                        <span className="text-[10px] text-slate-600 font-medium">{method.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex justify-center pt-1">
-                  <img
-                    src="./products/Minimal-Payment-Methods-Banner.webp"
-                    alt="Supported Bangladeshi Payment Methods"
-                    className="w-full max-w-sm rounded-lg bg-white p-1 border border-[#E2E8F0] shadow-sm"
+                    className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
                   />
                 </div>
 
-                {/* Instructions Box */}
-                <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-slate-500 block font-medium">Send Money to:</span>
-                      <span className="text-sm sm:text-base font-black text-[#0F172A] font-mono tracking-wider">
-                        {activeMethod.number || activeMethod.address}
-                      </span>
-                      <span className="text-[11px] text-[#00C853] block mt-0.5 font-bold">
-                        {activeMethod.type}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleCopyNumber(activeMethod.number || activeMethod.address || '')}
-                      className="flex items-center gap-1.5 bg-white hover:bg-[#F1F5F9] text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-[#CBD5E1] transition-colors shadow-sm"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-[#00C853]" />
-                          <span className="text-[#00C853]">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      প্রেরক নম্বর (ঐচ্ছিক)
+                    </label>
+                    <input
+                      type="tel"
+                      value={senderNumber}
+                      onChange={(e) => setSenderNumber(e.target.value)}
+                      placeholder="01XXXXXXXXX"
+                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
+                    />
                   </div>
-
-                  {/* Payment Steps */}
-                  <div className="pt-2 border-t border-[#E2E8F0] text-[11px] text-slate-600 space-y-1">
-                    <p>1. Open your <strong>{activeMethod.name} App</strong> and select <strong>Send Money</strong>.</p>
-                    <p>2. Send <strong>{formatPrice(finalTotal)}</strong> to the copied number above.</p>
-                    <p>3. Put your Sender Number & TrxID below for instant verification.</p>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Transaction ID (TrxID) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={trxId}
+                      onChange={(e) => setTrxId(e.target.value)}
+                      placeholder="e.g. BL92A8ZK9Q"
+                      className="w-full bg-[#F8FAFC] border border-blue-400 rounded-xl px-3 py-2 text-xs font-mono font-bold uppercase text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white shadow-sm"
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <input
-                        type="text"
-                        value={senderNumber}
-                        onChange={(e) => setSenderNumber(e.target.value)}
-                        placeholder="Sender Phone Number"
-                        className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853]"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        value={trxId}
-                        onChange={(e) => setTrxId(e.target.value)}
-                        placeholder="Transaction ID (TrxID) *"
-                        className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#00C853] uppercase font-mono font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  {settings?.autoVerifyEnabled && settings?.firebaseProjectId && (
-                    <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center gap-1.5 font-bold">
-                      <Zap className="w-3.5 h-3.5 text-[#00C853] flex-shrink-0 animate-bounce" />
-                      <span>⚡ Instant TrxID Verification & Automated Email Delivery is ACTIVE</span>
-                    </div>
-                  )}
                 </div>
-
               </div>
 
-              {/* Guarantees & Policy trigger */}
-              <div className="p-3 rounded-xl bg-[#F0FDF4] border border-[#86EFAC] flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 text-[#15803D] font-bold">
-                  <ShieldCheck className="w-4 h-4 text-[#00C853]" />
-                  <span>100% Genuine Replacement Guarantee</span>
-                </div>
-                {onOpenPolicy && (
-                  <button
-                    type="button"
-                    onClick={onOpenPolicy}
-                    className="text-[11px] text-[#00C853] font-bold underline hover:text-[#15803D]"
-                  >
-                    View Policy
-                  </button>
-                )}
-              </div>
-
-              {/* Submit CTA */}
+              {/* Big Blue Pay Amount Action Button (Screenshot Match) */}
               <button
                 type="submit"
                 disabled={isVerifying}
-                className="w-full bg-[#00C853] hover:bg-[#00B248] text-white font-heading font-black text-sm py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                className="w-full bg-[#0052CC] hover:bg-[#0047B3] text-white font-heading font-black text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
-                <span>Confirm Order & Verify Payment ({formatPrice(finalTotal)})</span>
+                <span>Pay Amount</span>
               </button>
 
             </form>
