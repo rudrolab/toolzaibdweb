@@ -130,6 +130,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Firebase Firestore Gateway Settings
   const [autoVerifyEnabled, setAutoVerifyEnabled] = useState(settings.autoVerifyEnabled ?? true);
+  const [gatewayApiUrl, setGatewayApiUrl] = useState(settings.gatewayApiUrl || '');
   const [firebaseApiKey, setFirebaseApiKey] = useState(settings.firebaseApiKey || '');
   const [firebaseProjectId, setFirebaseProjectId] = useState(settings.firebaseProjectId || '');
   const [firestoreCollectionName, setFirestoreCollectionName] = useState(settings.firestoreCollectionName || 'transactions');
@@ -266,6 +267,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       resendApiKey: resendApiKey.trim() || undefined,
       senderEmail: senderEmail.trim() || undefined,
       autoVerifyEnabled,
+      gatewayApiUrl: gatewayApiUrl.trim() || undefined,
       firebaseApiKey: firebaseApiKey.trim() || undefined,
       firebaseProjectId: firebaseProjectId.trim() || undefined,
       firestoreCollectionName: firestoreCollectionName.trim() || 'transactions',
@@ -1636,6 +1638,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     >
                       Firebase Console <ExternalLink className="w-3 h-3" />
                     </a>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Gateway Verification API URL (ঐচ্ছিক - Vercel Gateway Deploy করা থাকলে)
+                    </label>
+                    <input
+                      type="url"
+                      value={gatewayApiUrl}
+                      onChange={(e) => setGatewayApiUrl(e.target.value)}
+                      placeholder="https://your-payment-gateway.vercel.app"
+                      className="w-full bg-white border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] focus:border-[#00C853]"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      আপনার নিজস্ব গেটওয়ের Vercel URL থাকলে এটি দিন, সরাসরি /api/verify-payment দিয়ে ভেরিফাই হবে।
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

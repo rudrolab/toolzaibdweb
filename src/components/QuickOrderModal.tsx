@@ -317,7 +317,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     // ================= ⚡ AUTOMATED VERIFICATION & DELIVERY =================
     const canAutoVerify = Boolean(
       settings?.autoVerifyEnabled &&
-      settings?.firebaseProjectId &&
+      (settings?.firebaseProjectId || settings?.gatewayApiUrl) &&
       cleanTrx
     );
 

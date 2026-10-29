@@ -58,17 +58,57 @@ export async function verifyPaymentInFirestore(params: {
 }): Promise<VerificationResult> {
   const { settings, trxId, requiredAmount, orderId } = params;
 
+  const cleanTrx = trxId.trim();
+  if (!cleanTrx) {
+    return { success: false, message: 'সঠিক TrxID প্রদান করুন।' };
+  }
+
+  // 1. If Gateway API URL is configured (e.g. from the Vercel payment gateway repo)
+  if (settings.gatewayApiUrl?.trim()) {
+    try {
+      const baseUrl = settings.gatewayApiUrl.trim().replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/verify-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactionId: cleanTrx,
+          amount: requiredAmount,
+          orderId: orderId,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && (data.success || data.verified || data.status === 'verified')) {
+        return {
+          success: true,
+          message: 'গেটওয়ে API এর মাধ্যমে পেমেন্ট সফলভাবে ভেরিফাই হয়েছে!',
+          paidAmount: data.amount || requiredAmount,
+          senderNumber: data.sender || data.senderNumber,
+        };
+      } else if (!settings.firebaseProjectId) {
+        return {
+          success: false,
+          message: data.message || data.error || 'পেমেন্ট গেটওয়েতে এই TrxID টি পাওয়া যায়নি বা ইতিমধ্যে ব্যবহার করা হয়েছে।',
+        };
+      }
+    } catch (apiErr) {
+      console.warn('Gateway API verify error, falling back to direct Firestore:', apiErr);
+      if (!settings.firebaseProjectId) {
+        return {
+          success: false,
+          message: 'পেমেন্ট গেটওয়ে সার্ভারে সংযোগ করা যায়নি। কিছুক্ষণ পর পুনরায় চেষ্টা করুন।',
+        };
+      }
+    }
+  }
+
+  // 2. Direct Firestore Verification
   const db = getFirestoreInstance(settings);
   if (!db) {
     return {
       success: false,
-      message: 'Firebase Project ID কনফিগার করা নেই। এডমিন সেটিংস থেকে Firebase Config সেট করুন।',
+      message: 'Firebase Project ID অথবা Gateway URL কনফিগার করা নেই। এডমিন সেটিংস থেকে সেট করুন।',
     };
-  }
-
-  const cleanTrx = trxId.trim();
-  if (!cleanTrx) {
-    return { success: false, message: 'সঠিক TrxID প্রদান করুন।' };
   }
 
   const collectionName = settings.firestoreCollectionName?.trim() || 'transactions';

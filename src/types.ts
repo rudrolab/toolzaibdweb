@@ -104,6 +104,7 @@ export interface StoreSettings {
   
   // Firebase Firestore Payment Gateway Settings
   autoVerifyEnabled?: boolean;
+  gatewayApiUrl?: string; // e.g. "https://your-gateway.vercel.app"
   firebaseApiKey?: string;
   firebaseAuthDomain?: string;
   firebaseProjectId?: string;

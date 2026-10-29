@@ -251,7 +251,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     // ================= ⚡ AUTOMATED VERIFICATION & DELIVERY =================
     const canAutoVerify = Boolean(
       settings?.autoVerifyEnabled &&
-      settings?.firebaseProjectId &&
+      (settings?.firebaseProjectId || settings?.gatewayApiUrl) &&
       cleanTrx
     );
 
