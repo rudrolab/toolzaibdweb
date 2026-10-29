@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  X,
   Check,
   Copy,
   Zap,
@@ -8,7 +7,6 @@ import {
   AlertCircle,
   ExternalLink,
   CheckCircle2,
-  Lock,
   Globe,
   Building2
 } from 'lucide-react';
@@ -28,49 +26,6 @@ import {
   sendDeliveryEmailViaResend,
   resolveOrderCredentials
 } from '../services/autoDelivery';
-
-// Official Vector Provider Logos
-const BkashLogo = () => (
-  <div className="flex items-center justify-center">
-    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
-      <path d="M22 4L8 24h12l-3 7 19-19H24l4-12z" fill="#E2136E" />
-      <text x="42" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="18" fill="#E2136E" letterSpacing="-0.5px">bKash</text>
-    </svg>
-  </div>
-);
-
-const NagadLogo = () => (
-  <div className="flex items-center justify-center">
-    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
-      <circle cx="16" cy="16" r="11" fill="#F7941D" fillOpacity="0.2" />
-      <path d="M16 6c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10c0-3.8-2-6.6-4.8-8.5l-1.9 2.8c1.9 1.4 2.9 3.3 2.9 5.7 0 3.8-2.9 6.7-6.2 6.7s-6.2-2.9-6.2-6.7c0-3.8 2.9-6.7 6.2-6.7v-3.3z" fill="#F7941D" />
-      <circle cx="16" cy="16" r="2.8" fill="#ED1C24" />
-      <text x="36" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="17" fill="#F7941D" letterSpacing="-0.5px">নগদ</text>
-    </svg>
-  </div>
-);
-
-const RocketLogo = () => (
-  <div className="flex items-center justify-center">
-    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
-      <path d="M15 4c-4 5-5.5 10-5.5 15 0 4 2 8 5.5 9.5 3.5-1.5 5.5-5.5 5.5-9.5 0-5-1.5-10-5.5-15z" fill="#8C3494" />
-      <path d="M9.5 19l-4 4 1.2 2 4.8-2M20.5 19l4 4-1.2 2-4.8-2" stroke="#8C3494" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="15" cy="14" r="2.8" fill="#FFFFFF" />
-      <text x="34" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="17" fill="#8C3494" letterSpacing="-0.5px">রকেট</text>
-    </svg>
-  </div>
-);
-
-const UpayLogo = () => (
-  <div className="flex items-center justify-center">
-    <svg viewBox="0 0 100 32" className="h-6 w-auto" fill="none">
-      <path d="M9 9v8a6.5 6.5 0 0013 0V9h-3.3v8a3.2 3.2 0 01-6.4 0V9H9z" fill="#0072BC" />
-      <circle cx="15.5" cy="6.5" r="2.2" fill="#FFC80A" />
-      <circle cx="15.5" cy="19.5" r="2.2" fill="#FFC80A" />
-      <text x="32" y="22" fontFamily="sans-serif" fontWeight="900" fontSize="18" fill="#0072BC" letterSpacing="-0.5px">upay</text>
-    </svg>
-  </div>
-);
 
 interface QuickOrderModalProps {
   product: Product | null;
@@ -174,10 +129,6 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
   const finalTotal = Math.max(0, rawSubtotal - discount);
 
-  const formatPrice = (p: number) => {
-    return p.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '৳';
-  };
-
   const activeMethod = paymentMethods.find((p) => p.id === selectedPayment) || paymentMethods[0];
 
   const handleCopyNumber = (num: string) => {
@@ -212,7 +163,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     }
 
     if (matched.minSpend && rawSubtotal < matched.minSpend) {
-      setErrorMsg(`এই কুপনটি ব্যবহার করতে ন্যূনতম ${formatPrice(matched.minSpend)} টাকার অর্ডার প্রয়োজন।`);
+      setErrorMsg(`এই কুপনটি ব্যবহার করতে ন্যূনতম ৳${matched.minSpend} টাকার অর্ডার প্রয়োজন।`);
       return;
     }
 
@@ -277,8 +228,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
       `🎉 TOOLZAI BD QUICK ORDER (#${orderId})\n\n` +
       `Product: ${product.title}${variantInfo}\n` +
       `Quantity: ${quantity}\n` +
-      `Total Payable: ${formatPrice(finalTotal)}\n` +
-      (discount > 0 ? `Coupon Discount (${appliedCoupon?.code}): -${formatPrice(discount)}\n` : '') +
+      `Total Payable: ৳${finalTotal}\n` +
+      (discount > 0 ? `Coupon Discount (${appliedCoupon?.code}): -৳${discount}\n` : '') +
       `\nCustomer Details:\n` +
       `Name: ${cleanName || 'Customer'}\n` +
       `WhatsApp Phone: ${cleanPhone}\n` +
@@ -354,7 +305,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
           newOrder.deliveryStatus = emailSent ? 'sent' : 'pending';
           newOrder.deliveryCredentialsSent = credentialsText;
           newOrder.verifiedAt = new Date().toISOString();
-          newOrder.notes = `⚡ Auto-Verified via Firebase Firestore (TrxID: ${cleanTrx}). Email: ${emailSent ? 'Sent' : 'Pending'}`;
+          newOrder.notes = `⚡ Auto-Verified via Gateway (TrxID: ${cleanTrx}). Email: ${emailSent ? 'Sent' : 'Pending'}`;
 
           if (onPlaceOrder) onPlaceOrder(newOrder);
 
@@ -369,6 +320,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
           setIsVerifying(false);
           return;
         } else {
+          setErrorMsg(verifyRes.message || 'Transaction ID not found in our records.');
           newOrder.notes = `Auto-verify attempt failed: ${verifyRes.message}`;
         }
       } catch (err: any) {
@@ -388,54 +340,50 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      
-      {/* Background Pattern Wallpaper */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
       <div
-        className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden my-auto"
+        className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 sm:min-w-[650px] sm:rounded-lg sm:p-8 sm:shadow-lg sm:shadow-[#0057d0]/10 font-['Poppins',sans-serif] my-auto"
         style={{
-          backgroundImage: `radial-gradient(#E2E8F0 1px, transparent 1px)`,
-          backgroundSize: '20px 20px',
+          backgroundImage: `linear-gradient(350deg, rgb(244, 249, 255), rgba(237, 244, 255, 0.79)), url("https://pay.smmnea.com/themes/default/assets/images/body.png")`,
+          backgroundSize: 'cover',
         }}
       >
         
-        {/* Top Search / Header Pill */}
-        <div className="p-4 sm:p-5 pb-0">
-          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 flex items-center justify-between shadow-inner">
-            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-              <Lock className="w-3.5 h-3.5 text-blue-600" />
-              <span>ToolzAi BD Secure 256-bit Encrypted Checkout</span>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-700 transition-colors"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        {/* Top Bar: Close Button */}
+        <div className="flex h-12 w-full items-center justify-between overflow-hidden rounded-lg bg-white p-5 shadow-md shadow-[#0057d0]/5 sm:bg-[#fbfcff] sm:shadow-none sm:ring-1 sm:ring-[#0057d0]/10">
+          <div className="text-xs font-semibold text-[#6D7F9A]">
+            Direct Checkout
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-7 w-7 place-content-center rounded-full border border-[#e1ecff] text-[#6D7F9A] hover:bg-slate-100 transition-colors"
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Verification Loading State */}
         {isVerifying ? (
-          <div className="p-8 sm:p-12 text-center space-y-5 bg-white/95">
-            <div className="w-14 h-14 rounded-full bg-blue-50 border-2 border-[#0052CC] text-[#0052CC] flex items-center justify-center mx-auto animate-spin">
+          <div className="p-8 sm:p-12 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-blue-50 border-2 border-[#0057d0] text-[#0057d0] flex items-center justify-center mx-auto animate-spin">
               <Zap className="w-7 h-7" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-heading font-black text-lg text-[#0F172A]">
+              <h3 className="text-lg font-semibold text-[#30405a]">
                 {verificationStage === 'verifying'
                   ? 'গেটওয়েতে পেমেন্ট যাচাই করা হচ্ছে...'
                   : 'পেমেন্ট সফল! আপনার ইমেইলে প্রোডাক্ট পাঠানো হচ্ছে...'}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#879ab6]">
                 অপেক্ষা করুন, কয়েক সেকেন্ডের মধ্যে লাইসেন্স পেয়ে যাবেন...
               </p>
             </div>
           </div>
         ) : orderComplete ? (
           /* Order Complete State */
-          <div className="p-6 sm:p-8 text-center space-y-4 bg-white/95">
+          <div className="p-6 sm:p-8 text-center space-y-4">
             {autoDeliveredData ? (
               <div className="space-y-3">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
@@ -445,11 +393,11 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                   <span className="bg-[#DCFCE7] text-[#15803D] text-[10.5px] font-black uppercase px-2.5 py-0.5 rounded-full inline-block">
                     ⚡ Instant Delivery Completed
                   </span>
-                  <h3 className="font-heading font-black text-xl text-[#0F172A]">
+                  <h3 className="text-xl font-semibold text-[#30405a]">
                     পেমেন্ট ভেরিফাইড ও প্রডাক্ট ডেলিভার্ড!
                   </h3>
-                  <p className="text-xs text-[#475569] leading-relaxed">
-                    আপনার ডিজিটাল লাইসেন্স / অ্যাক্টিভেশন লিঙ্ক সরাসরি <strong className="text-blue-600">{customerEmail}</strong> এ পাঠিয়ে দেওয়া হয়েছে।
+                  <p className="text-xs text-[#6D7F9A] leading-relaxed">
+                    আপনার ডিজিটাল লাইসেন্স / লিঙ্ক সরাসরি <strong className="text-[#0057d0]">{customerEmail}</strong> এ পাঠিয়ে দেওয়া হয়েছে।
                   </p>
                 </div>
 
@@ -480,13 +428,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto">
                   <Check className="w-8 h-8 stroke-[3]" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-heading font-black text-2xl text-[#0F172A]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
-                  <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                    ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! দ্রুত ডেলিভারির জন্য হোয়াটসঅ্যাপ বাটনে ক্লিক করে ইনভয়েসটি পাঠিয়ে দিন।
+                  <h3 className="text-2xl font-semibold text-[#30405a]">অর্ডার সফলভাবে জমা হয়েছে!</h3>
+                  <p className="text-xs sm:text-sm text-[#6D7F9A] max-w-md mx-auto">
+                    ধন্যবাদ, <strong>{customerName || 'Customer'}</strong>! দ্রুত ডেলিভারির জন্য হোয়াটসঅ্যাপে ইনভয়েসটি পাঠিয়ে দিন।
                   </p>
                 </div>
               </div>
@@ -504,17 +452,6 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
               >
                 {copiedOrderId ? <Check className="w-3.5 h-3.5 text-[#00C853]" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-left max-w-md mx-auto text-xs space-y-1.5">
-              <div className="flex justify-between text-slate-600">
-                <span>Total Amount:</span>
-                <span className="font-black text-blue-600 text-sm">{formatPrice(finalTotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Delivery Email:</span>
-                <span className="font-bold text-[#0F172A]">{customerEmail}</span>
-              </div>
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
@@ -537,13 +474,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
             </div>
           </div>
         ) : (
-          /* Payment Gateway Interface (1:1 Match with Screenshot) */
-          <div className="bg-white/95">
+          /* Payment Gateway Interface (Exact 1:1 Structure from User HTML) */
+          <div>
             
-            {/* Selected Product Pill Banner */}
-            <div className="px-5 sm:px-6 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 bg-[#F8FAFC]/60">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 bg-white flex-shrink-0">
+            {/* Header: Product Preview & Branding */}
+            <div className="mb-4 flex items-center justify-between border-b border-[#e1ecff] pb-3 bg-white/70 p-3 rounded-lg">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-white flex-shrink-0">
                   {product.imageUrl ? (
                     <img src={product.imageUrl} alt={product.title} className="w-full h-full object-contain p-0.5" />
                   ) : (
@@ -551,62 +488,58 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[#0F172A] truncate">
+                  <h4 className="text-xs font-bold text-[#30405a] truncate">
                     {product.title} {selectedVariant ? `(${selectedVariant.name})` : ''}
                   </h4>
-                  <span className="text-[10px] text-slate-500">Qty: {quantity}</span>
+                  <span className="text-[11px] text-[#6D7F9A]">Qty: {quantity}</span>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-black text-blue-600 font-mono">{formatPrice(finalTotal)}</span>
+                <span className="text-sm font-bold text-[#0057D0] font-mono">৳{finalTotal}</span>
               </div>
             </div>
 
-            {/* Gateway Brand Header */}
-            <div className="px-5 sm:px-6 pt-3 pb-3 flex items-center gap-3 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-heading font-black text-xs shadow-sm flex-shrink-0">
-                <span>PG</span>
+            {/* Header: Branding & Title */}
+            <div className="mb-6 mt-2 flex w-full flex-col items-center sm:mb-3 sm:flex-row">
+              <div className="mb-4 sm:mr-8">
+                <div className="w-20 h-20 sm:w-[85px] sm:h-[85px] rounded-full ring-1 ring-[#0057D0]/20 bg-gradient-to-tr from-[#0057D0] to-[#004cb7] text-white flex items-center justify-center font-bold text-2xl shadow-md transition-all duration-300 hover:scale-105">
+                  PG
+                </div>
               </div>
-              <div>
-                <h3 className="font-heading font-black text-lg text-[#0F172A] tracking-tight">
-                  Payment Gateway
-                </h3>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <div className="flex flex-col items-center sm:items-start">
+                <h3 className="mb-4 text-xl font-semibold text-[#6D7F9A] sm:mb-2">Payment Gateway</h3>
+                <div className="text-xs text-[#879ab6] flex items-center gap-1.5">
                   <a
-                    href={getWhatsAppUrl(settings?.whatsappNumber, 'Hello ToolzAIBD, I need help with payment.')}
+                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAIBD, I need payment assistance for ${product.title}.`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-blue-600 transition-colors"
+                    className="hover:text-[#0057D0] transition-colors"
                   >
                     সহায়তা
                   </a>
                   <span>•</span>
-                  {onOpenPolicy && (
-                    <button
-                      type="button"
-                      onClick={onOpenPolicy}
-                      className="hover:text-blue-600 transition-colors"
-                    >
+                  {onOpenPolicy ? (
+                    <button type="button" onClick={onOpenPolicy} className="hover:text-[#0057D0] transition-colors">
                       প্রশ্নাবলী
                     </button>
+                  ) : (
+                    <span>প্রশ্নাবলী</span>
                   )}
                   <span>•</span>
-                  {onOpenPolicy && (
-                    <button
-                      type="button"
-                      onClick={onOpenPolicy}
-                      className="hover:text-blue-600 transition-colors"
-                    >
+                  {onOpenPolicy ? (
+                    <button type="button" onClick={onOpenPolicy} className="hover:text-[#0057D0] transition-colors">
                       বিস্তারিত
                     </button>
+                  ) : (
+                    <span>বিস্তারিত</span>
                   )}
                 </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSubmit}>
               
-              {/* Invisible honeypot for anti-bot protection */}
+              {/* Invisible honeypot field for anti-bot spam protection */}
               <input
                 type="text"
                 name="website_url_hp"
@@ -618,18 +551,11 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 aria-hidden="true"
               />
 
-              {errorMsg && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
               {/* Product Option Variants (if any) */}
               {product.hasVariants && product.variants && product.variants.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-700">
-                    Option / Duration:
+                <div className="mb-3 space-y-1">
+                  <label className="block text-xs font-semibold text-[#30405a]">
+                    Select Option / Duration:
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {product.variants.map((v) => {
@@ -639,15 +565,15 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           type="button"
                           key={v.id}
                           onClick={() => setSelectedVariant(v)}
-                          className={`text-xs font-bold py-1.5 px-3 rounded-xl border transition-all text-left flex items-center gap-1.5 ${
+                          className={`text-xs font-semibold py-1 px-3 rounded-lg border transition-all text-left flex items-center gap-1.5 ${
                             isSelected
-                              ? 'bg-blue-50 text-blue-700 border-blue-600 shadow-sm'
+                              ? 'bg-blue-50 text-[#0057D0] border-[#0057D0] shadow-sm'
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={isSelected ? 'text-blue-700' : 'text-slate-500'}>
-                            {formatPrice(v.price)}
+                          <span className={isSelected ? 'text-[#0057D0]' : 'text-slate-500'}>
+                            ৳{v.price}
                           </span>
                         </button>
                       );
@@ -656,42 +582,40 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 </div>
               )}
 
-              {/* Promo Code Input & Discount Pill */}
-              <div className="flex gap-2">
+              {/* Promo Code Input */}
+              <div className="mb-3 flex gap-2">
                 <input
                   type="text"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value)}
                   placeholder="Coupon: TOOLZAI10"
-                  className="flex-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs text-[#0F172A] placeholder-[#94A3B8] focus:border-blue-600 focus:outline-none uppercase font-mono"
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 focus:border-[#0057d0] focus:outline-none uppercase font-mono"
                 />
                 <button
                   type="button"
                   onClick={handleApplyCoupon}
-                  className="bg-[#0052CC] hover:bg-[#0047B3] text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition-colors"
+                  className="rounded-lg bg-[#0057D0] hover:bg-[#004cb7] text-white text-xs font-semibold px-3.5 py-1.5 transition-colors"
                 >
                   Apply
                 </button>
               </div>
 
               {appliedCoupon && (
-                <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded-lg flex justify-between items-center">
+                <div className="mb-3 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded-lg flex justify-between items-center">
                   <span>
                     Coupon {appliedCoupon.code} applied ({appliedCoupon.discountType === 'percent' ? `${appliedCoupon.discountValue}% OFF` : `${appliedCoupon.discountValue}৳ OFF`})
                   </span>
-                  <span className="text-emerald-800">Saved -{formatPrice(discount)}</span>
+                  <span className="text-emerald-800 font-bold">-৳{discount}</span>
                 </div>
               )}
 
-              {/* Category Navigation Tabs (The iconic Blue Bar from screenshot) */}
-              <div className="bg-[#0052CC] rounded-xl p-1 grid grid-cols-3 gap-1 shadow-md">
+              {/* Category Tabs (Blue Bar) */}
+              <div className="mb-3 flex w-full justify-between overflow-hidden rounded-md bg-[#0057d0] text-white">
                 <button
                   type="button"
                   onClick={() => setActiveTab('mobile')}
-                  className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all ${
-                    activeTab === 'mobile'
-                      ? 'bg-[#003B95] text-white shadow-sm'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  className={`h-full w-full rounded-md py-1.5 text-center text-[12px] leading-[23px] transition-all sm:text-[15px] ${
+                    activeTab === 'mobile' ? 'bg-[#004cb7] text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                   }`}
                 >
                   মোবাইল ব্যাংকিং
@@ -699,10 +623,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('international')}
-                  className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all ${
-                    activeTab === 'international'
-                      ? 'bg-[#003B95] text-white shadow-sm'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  className={`h-full w-full rounded-md py-1.5 text-center text-[12px] leading-[23px] transition-all sm:text-[15px] ${
+                    activeTab === 'international' ? 'bg-[#004cb7] text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                   }`}
                 >
                   ইন্টারন্যাশনাল
@@ -710,219 +632,215 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('netbanking')}
-                  className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all ${
-                    activeTab === 'netbanking'
-                      ? 'bg-[#003B95] text-white shadow-sm'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  className={`h-full w-full rounded-md py-1.5 text-center text-[12px] leading-[23px] transition-all sm:text-[15px] ${
+                    activeTab === 'netbanking' ? 'bg-[#004cb7] text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                   }`}
                 >
                   নেট ব্যাংকিং
                 </button>
               </div>
 
-              {/* Tab 1: মোবাইল ব্যাংকিং (4 Grid Cards matching screenshot) */}
+              {/* Tab 1: মোবাইল ব্যাংকিং */}
               {activeTab === 'mobile' && (
-                <div className="space-y-3 animate-in fade-in duration-150">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="mt-3 w-full overflow-auto p-0.5 pb-2">
+                  <div className="grid grid-cols-2 gap-3 pb-3 sm:grid-cols-4">
+                    
                     {/* Bkash Personal */}
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('bkash')}
-                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
-                        selectedPayment === 'bkash'
-                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
+                        selectedPayment === 'bkash' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
                       }`}
                     >
-                      <BkashLogo />
-                      <span className="text-[11px] font-semibold text-slate-600">Bkash Personal</span>
+                      <div className="flex h-14 w-full items-center justify-center px-3 py-2">
+                        <img
+                          className="h-10 w-full object-contain"
+                          alt="Bkash Personal"
+                          src="https://pay.smmnea.com/assets/gateways/bkash/bkashpersonal.png"
+                        />
+                      </div>
+                      <div className="w-full border-t px-3 py-2">
+                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">Bkash Personal</p>
+                      </div>
                     </button>
 
                     {/* Nagad Personal */}
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('nagad')}
-                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
-                        selectedPayment === 'nagad'
-                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
+                        selectedPayment === 'nagad' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
                       }`}
                     >
-                      <NagadLogo />
-                      <span className="text-[11px] font-semibold text-slate-600">Nagad Personal</span>
+                      <div className="flex h-14 w-full items-center justify-center px-3 py-2">
+                        <img
+                          className="h-10 w-full object-contain"
+                          alt="Nagad Personal"
+                          src="https://pay.smmnea.com/assets/gateways/nagad/nagadpersonal.png"
+                        />
+                      </div>
+                      <div className="w-full border-t px-3 py-2">
+                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">Nagad Personal</p>
+                      </div>
                     </button>
 
                     {/* Rocket Personal */}
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('rocket')}
-                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
-                        selectedPayment === 'rocket'
-                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
+                        selectedPayment === 'rocket' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
                       }`}
                     >
-                      <RocketLogo />
-                      <span className="text-[11px] font-semibold text-slate-600">Rocket Personal</span>
+                      <div className="flex h-14 w-full items-center justify-center px-3 py-2">
+                        <img
+                          className="h-10 w-full object-contain"
+                          alt="Rocket Personal"
+                          src="https://pay.smmnea.com/assets/gateways/rocket/rocketpersonal.png"
+                        />
+                      </div>
+                      <div className="w-full border-t px-3 py-2">
+                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">Rocket Personal</p>
+                      </div>
                     </button>
 
                     {/* UPay Personal */}
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('upay')}
-                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
-                        selectedPayment === 'upay'
-                          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
+                        selectedPayment === 'upay' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
                       }`}
                     >
-                      <UpayLogo />
-                      <span className="text-[11px] font-semibold text-slate-600">UPay Personal</span>
+                      <div className="flex h-14 w-full items-center justify-center px-3 py-2">
+                        <img
+                          className="h-10 w-full object-contain"
+                          alt="UPay Personal"
+                          src="https://pay.smmnea.com/assets/gateways/upay/upaypersonal.png"
+                        />
+                      </div>
+                      <div className="w-full border-t px-3 py-2">
+                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">UPay Personal</p>
+                      </div>
                     </button>
                   </div>
 
-                  {/* Provider Send Money Details Box */}
-                  <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[10.5px] text-slate-500 font-semibold block uppercase">
-                          {activeMethod.name} Personal Send Money Number:
-                        </span>
-                        <span className="text-base font-black font-mono text-[#0F172A] tracking-wider">
-                          {activeMethod.number}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyNumber(activeMethod.number || '')}
-                        className="flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-300 shadow-sm transition-all"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="text-emerald-600">কপি হয়েছে</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5 text-slate-400" />
-                            <span>কপি করুন</span>
-                          </>
-                        )}
-                      </button>
+                  {/* Send Money Number Pill */}
+                  <div className="mb-3 rounded-lg border border-[#e1ecff] bg-white p-3 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] text-[#6D7F9A] block font-medium">
+                        {activeMethod.name} Personal Send Money Number:
+                      </span>
+                      <span className="text-sm font-bold font-mono text-[#0057D0]">
+                        {activeMethod.number}
+                      </span>
                     </div>
-
-                    <div className="text-[11px] text-slate-600 pt-2 border-t border-slate-200/80 space-y-0.5">
-                      <p>১. আপনার <strong>{activeMethod.name} অ্যাপে</strong> গিয়ে <strong>Send Money</strong> সিলেক্ট করুন।</p>
-                      <p>২. নিচে উল্লেখিত স্বয়ংক্রিয় <strong>{formatPrice(finalTotal)}</strong> টাকা সেন্ড মানি করুন।</p>
-                      <p>৩. প্রাপ্ত <strong>Transaction ID (TrxID)</strong> নিচে লিখে পে চাপুন।</p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyNumber(activeMethod.number || '')}
+                      className="flex items-center gap-1 rounded-md border border-[#0057D0]/30 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#0057D0] hover:bg-blue-100 transition-colors"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copied ? 'কপি হয়েছে' : 'কপি করুন'}</span>
+                    </button>
                   </div>
                 </div>
               )}
 
               {/* Tab 2: ইন্টারন্যাশনাল */}
               {activeTab === 'international' && (
-                <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-4 text-center space-y-3 animate-in fade-in duration-150">
-                  <Globe className="w-8 h-8 text-blue-600 mx-auto" />
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-[#0F172A]">Binance Pay & USDT (TRC20 / BEP20)</h4>
-                    <p className="text-xs text-slate-600">
-                      আন্তর্জাতিক পেমেন্ট বা ক্রিপ্টোতে পে করতে চাইলে সরাসরি হোয়াটসঅ্যাপে যোগাযোগ করুন।
-                    </p>
-                  </div>
+                <div className="my-3 rounded-lg border border-[#e1ecff] bg-white p-4 text-center space-y-2">
+                  <Globe className="w-8 h-8 text-[#0057D0] mx-auto" />
+                  <h4 className="text-sm font-semibold text-[#30405a]">Binance Pay & USDT (TRC20 / BEP20)</h4>
+                  <p className="text-xs text-[#879ab6]">
+                    আন্তর্জাতিক বা ক্রিপ্টোতে পেমেন্ট করতে সরাসরি হোয়াটসঅ্যাপে নক দিন।
+                  </p>
                   <a
-                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAIBD, I want to pay ${formatPrice(finalTotal)} using Crypto USDT / Binance for ${product.title}.`)}
+                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello, I want to pay ${finalTotal} BDT via Binance / USDT for ${product.title}.`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#0052CC] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-[#0057D0] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Pay via WhatsApp Crypto Help</span>
+                    <span>WhatsApp Crypto Help</span>
                   </a>
                 </div>
               )}
 
               {/* Tab 3: নেট ব্যাংকিং */}
               {activeTab === 'netbanking' && (
-                <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-4 text-center space-y-3 animate-in fade-in duration-150">
-                  <Building2 className="w-8 h-8 text-blue-600 mx-auto" />
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-[#0F172A]">City Touch / Islami Bank / Brac Bank</h4>
-                    <p className="text-xs text-slate-600">
-                      সরাসরি ব্যাংক ট্রান্সফারের মাধ্যমে পে করতে আমাদের অ্যাকাউন্ট বিস্তারিত পেতে হোয়াটসঅ্যাপে নক দিন।
-                    </p>
-                  </div>
+                <div className="my-3 rounded-lg border border-[#e1ecff] bg-white p-4 text-center space-y-2">
+                  <Building2 className="w-8 h-8 text-[#0057D0] mx-auto" />
+                  <h4 className="text-sm font-semibold text-[#30405a]">City Touch / Islami Bank / Brac Bank</h4>
+                  <p className="text-xs text-[#879ab6]">
+                    সরাসরি ব্যাংক ট্রান্সফারের মাধ্যমে পে করতে আমাদের অ্যাকাউন্ট বিস্তারিত পেতে হোয়াটসঅ্যাপে যোগাযোগ করুন।
+                  </p>
                   <a
-                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAIBD, I want to pay ${formatPrice(finalTotal)} via Bank Transfer for ${product.title}.`)}
+                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello, I want to pay ${finalTotal} BDT via Bank Transfer for ${product.title}.`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#0052CC] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-[#0057D0] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Get Bank Account Details</span>
+                    <span>Get Bank Details</span>
                   </a>
                 </div>
               )}
 
-              {/* Amount (BDT) Section (Exact Screenshot Match: Automatic Set) */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Amount (BDT)
-                  </label>
-                  <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> Automatic Set
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  readOnly
-                  value={finalTotal}
-                  className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-[#0F172A] cursor-not-allowed select-all focus:outline-none"
-                  placeholder="e.g. 13000"
-                />
+              {/* Amount (BDT) (Exact User Input Structure) */}
+              <label className="mb-2 mt-2 block text-sm font-semibold text-[#30405a]">Amount (BDT)</label>
+              <input
+                min="1"
+                readOnly
+                className="mb-2 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 cursor-not-allowed font-bold"
+                placeholder="e.g. 13000"
+                required
+                type="number"
+                value={finalTotal}
+              />
 
-                {/* Light Blue Info Alert Banner (Matching screenshot) */}
-                <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] rounded-xl px-3.5 py-2 text-[11px] leading-relaxed flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span>
-                    স্বয়ংক্রিয় গেটওয়ে: সমপরিমাণ টাকা সেন্ড মানি করে TrxID দিন, সাথে সাথে ইমেইলে প্রোডাক্ট ডেলিভারি হবে।
-                  </span>
-                </div>
-              </div>
+              {/* Info Alert Message (Matching User HTML) */}
+              <p className="mt-3 rounded-md bg-blue-50 p-2 text-xs text-blue-700">
+                ⚡ স্বয়ংক্রিয় গেটওয়ে: সমপরিমাণ টাকা সেন্ড মানি করে TrxID প্রদান করুন। যাচাই হওয়ামাত্র স্বয়ংক্রিয়ভাবে ইমেইলে প্রোডাক্ট ডেলিভারি হবে।
+              </p>
+
+              {/* Dynamic Error Message (Matching User HTML) */}
+              {errorMsg && (
+                <p className="mt-3 rounded-md bg-red-50 p-2 text-sm text-red-700 flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{errorMsg}</span>
+                </p>
+              )}
 
               {/* Customer Details for Delivery */}
-              <div className="pt-2 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="mt-3 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      আপনার নাম (ঐচ্ছিক)
-                    </label>
+                    <label className="block text-xs font-semibold text-[#30405a] mb-1">আপনার নাম (ঐচ্ছিক)</label>
                     <input
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Julkar Nayen"
-                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
+                      placeholder="e.g. আপনার নাম"
+                      className="block w-full rounded-lg border border-gray-300 bg-white p-2 text-xs text-gray-900 focus:border-[#0057d0] focus:ring-[#0057d0]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      হোয়াটসঅ্যাপ নম্বর *
-                    </label>
+                    <label className="block text-xs font-semibold text-[#30405a] mb-1">হোয়াটসঅ্যাপ নম্বর *</label>
                     <input
                       type="tel"
                       required
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="e.g. 017XXXXXXXX"
-                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
+                      className="block w-full rounded-lg border border-gray-300 bg-white p-2 text-xs text-gray-900 focus:border-[#0057d0] focus:ring-[#0057d0]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-[#30405a] mb-1">
                     ডেলিভারি ইমেইল (যেখানে লাইসেন্স কি পাঠানো হবে) *
                   </label>
                   <input
@@ -931,25 +849,25 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     placeholder="e.g. yourname@gmail.com"
-                    className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
+                    className="block w-full rounded-lg border border-gray-300 bg-white p-2 text-xs text-gray-900 focus:border-[#0057d0] focus:ring-[#0057d0]"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      প্রেরক নম্বর (ঐচ্ছিক)
+                    <label className="block text-xs font-semibold text-[#30405a] mb-1">
+                      প্রেরক নম্বর (Sender No)
                     </label>
                     <input
                       type="tel"
                       value={senderNumber}
                       onChange={(e) => setSenderNumber(e.target.value)}
                       placeholder="01XXXXXXXXX"
-                      className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white"
+                      className="block w-full rounded-lg border border-gray-300 bg-white p-2 text-xs text-gray-900 focus:border-[#0057d0] focus:ring-[#0057d0]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold text-[#30405a] mb-1">
                       Transaction ID (TrxID) *
                     </label>
                     <input
@@ -958,19 +876,19 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                       value={trxId}
                       onChange={(e) => setTrxId(e.target.value)}
                       placeholder="e.g. BL92A8ZK9Q"
-                      className="w-full bg-[#F8FAFC] border border-blue-400 rounded-xl px-3 py-2 text-xs font-mono font-bold uppercase text-[#0F172A] focus:outline-none focus:border-blue-600 focus:bg-white shadow-sm"
+                      className="block w-full rounded-lg border border-[#0057d0] bg-white p-2 text-xs font-mono font-bold uppercase text-gray-900 focus:ring-1 focus:ring-[#0057d0]"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Big Blue Pay Amount Action Button (Screenshot Match) */}
+              {/* Pay Button (Matching User HTML) */}
               <button
                 type="submit"
                 disabled={isVerifying}
-                className="w-full bg-[#0052CC] hover:bg-[#0047B3] text-white font-heading font-black text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                className="mt-4 w-full rounded-lg bg-[#0057D0] py-3.5 text-center font-semibold text-white shadow-md transition-all hover:bg-[#004cb7] active:scale-[0.99] disabled:opacity-80 cursor-pointer"
               >
-                <span>Pay Amount</span>
+                Pay {finalTotal} BDT
               </button>
 
             </form>
