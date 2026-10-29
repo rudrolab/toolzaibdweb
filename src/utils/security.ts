@@ -5,21 +5,25 @@
 
 // 1. Cryptographic Password Hashing using native Web Crypto API
 export async function hashPassword(plainText: string): Promise<string> {
-  if (!window.crypto || !window.crypto.subtle) {
-    // Fallback simple checksum if Web Crypto not available (e.g. very old test runners)
-    let hash = 0;
-    for (let i = 0; i < plainText.length; i++) {
-      hash = (hash << 5) - hash + plainText.charCodeAt(i);
-      hash |= 0;
-    }
-    return 'fb_' + Math.abs(hash).toString(16);
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode('toolzaibd_salt_2026_' + plainText);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  const encoder = new TextEncoder();
-  const data = encoder.encode('toolzaibd_salt_2026_' + plainText);
-  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  // Robust 64-bit multi-round mixing fallback if subtle crypto is unavailable
+  let h1 = 0xdeadbeef, h2 = 0x41c64e6d;
+  const str = 'toolzaibd_salt_2026_' + plainText;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 's256_' + (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
 }
 
 // 2. Input Sanitization (strips HTML, script tags, event handlers)
@@ -54,11 +58,11 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email.trim());
 }
 
-// 5. Transaction ID Validation (Alphanumeric, 6-20 chars)
+// 5. Transaction ID Validation (Alphanumeric and hyphen, 6-25 chars)
 export function isValidTrxId(trxId: string): boolean {
   if (!trxId) return false;
   const cleaned = trxId.trim();
-  return /^[A-Za-z0-9]{6,20}$/.test(cleaned);
+  return /^[A-Za-z0-9-]{6,25}$/.test(cleaned);
 }
 
 // 6. Anti-Spam Honeypot Checker

@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import {
   getFirestore,
   collection,
@@ -10,14 +10,18 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { StoreSettings, Order, Product } from '../types';
+import { getWhatsAppUrl } from '../utils/paymentHelpers';
 
 let cachedFirestore: Firestore | null = null;
+let cachedProjectId: string | null = null;
 
 export function getFirestoreInstance(settings: StoreSettings): Firestore | null {
-  if (cachedFirestore) return cachedFirestore;
-
   const projectId = settings.firebaseProjectId?.trim();
   if (!projectId) return null;
+
+  if (cachedFirestore && cachedProjectId === projectId) {
+    return cachedFirestore;
+  }
 
   try {
     const firebaseConfig = {
@@ -29,8 +33,12 @@ export function getFirestoreInstance(settings: StoreSettings): Firestore | null 
       appId: settings.firebaseAppId?.trim(),
     };
 
-    const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    const appName = `app_${projectId}`;
+    const existingApps = getApps();
+    const existingApp = existingApps.find((a) => a.name === appName || a.name === '[DEFAULT]');
+    const app = existingApp || initializeApp(firebaseConfig, appName);
     cachedFirestore = getFirestore(app);
+    cachedProjectId = projectId;
     return cachedFirestore;
   } catch (err) {
     console.error('Failed to initialize Firebase app:', err);
@@ -67,15 +75,20 @@ export async function verifyPaymentInFirestore(params: {
   if (settings.gatewayApiUrl?.trim()) {
     try {
       const baseUrl = settings.gatewayApiUrl.trim().replace(/\/$/, '');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch(`${baseUrl}/api/verify-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           transactionId: cleanTrx,
           amount: requiredAmount,
           orderId: orderId,
         }),
       });
+      clearTimeout(timeoutId);
 
       const data = await response.json().catch(() => ({}));
       if (response.ok && (data.success || data.verified || data.status === 'verified')) {
@@ -91,12 +104,15 @@ export async function verifyPaymentInFirestore(params: {
           message: data.message || data.error || 'পেমেন্ট গেটওয়েতে এই TrxID টি পাওয়া যায়নি বা ইতিমধ্যে ব্যবহার করা হয়েছে।',
         };
       }
-    } catch (apiErr) {
+    } catch (apiErr: any) {
       console.warn('Gateway API verify error, falling back to direct Firestore:', apiErr);
       if (!settings.firebaseProjectId) {
+        const isTimeout = apiErr?.name === 'AbortError';
         return {
           success: false,
-          message: 'পেমেন্ট গেটওয়ে সার্ভারে সংযোগ করা যায়নি। কিছুক্ষণ পর পুনরায় চেষ্টা করুন।',
+          message: isTimeout
+            ? 'গেটওয়ে সার্ভার সাড়া দিতে বিলম্ব হচ্ছে। অনুগ্রহ করে ম্যানুয়াল ভেরিফিকেশনের জন্য হোয়াটসঅ্যাপে অর্ডার সাবমিট করুন।'
+            : 'পেমেন্ট গেটওয়ে সার্ভারে সংযোগ করা যায়নি। কিছুক্ষণ পর পুনরায় চেষ্টা করুন।',
         };
       }
     }
@@ -323,7 +339,7 @@ export function buildDeliveryEmailHtml(params: {
       </p>
 
       <div style="text-align: center; margin-top: 24px;">
-        <a href="https://wa.me/8801886822838?text=Hello%20ToolzAi%20BD,%20I%20have%20an%20order%20%23${order.id}" class="btn-wa">
+        <a href="${getWhatsAppUrl(supportPhone, `Hello ${storeName}, I have a question about my order #${order.id}`)}" class="btn-wa">
           হোয়াটসঅ্যাপে হেল্প নিন (${supportPhone})
         </a>
       </div>
@@ -350,14 +366,7 @@ export async function sendDeliveryEmailViaResend(params: {
 }): Promise<{ success: boolean; message: string; emailId?: string }> {
   const { settings, order, credentialsText, instructionsText } = params;
 
-  const apiKey = settings.resendApiKey?.trim();
-  if (!apiKey) {
-    return {
-      success: false,
-      message: 'Resend API Key কনফিগার করা নেই। এডমিন সেটিংস থেকে Resend API Key যুক্ত করুন।',
-    };
-  }
-
+  const apiKey = settings.resendApiKey?.trim() || undefined;
   const senderEmail = settings.senderEmail?.trim() || 'ToolzAi BD <onboarding@resend.dev>';
   const storeName = settings.storeName || 'ToolzAi BD';
   const supportPhone = settings.whatsappNumber || '+8801886822838';
@@ -371,11 +380,15 @@ export async function sendDeliveryEmailViaResend(params: {
   });
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     const response = await fetch('/api/verify-and-deliver', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
       body: JSON.stringify({
         resendApiKey: apiKey,
         senderEmail,
@@ -390,6 +403,7 @@ export async function sendDeliveryEmailViaResend(params: {
         html,
       }),
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json().catch(() => ({}));
 

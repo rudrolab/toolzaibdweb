@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { PRODUCTS_DATA, CATEGORIES } from './data/products';
 import { INITIAL_ORDERS, INITIAL_COUPONS, INITIAL_SETTINGS } from './data/initialOrders';
 import { INITIAL_LANDING_PAGES } from './data/initialLandingPages';
@@ -21,13 +21,24 @@ import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Toast } from './components/Toast';
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import { AdminQuickBar } from './components/admin/AdminQuickBar';
-import { ProductFormModal } from './components/admin/ProductFormModal';
-import { LandingPageFormModal } from './components/admin/LandingPageFormModal';
-import { LandingPageView } from './components/landing/LandingPageView';
 import { Search, Sparkles, Filter, ArrowUpDown, Megaphone, Flame } from 'lucide-react';
+
+// Code-split heavy admin and landing page modules to optimize storefront performance
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminLoginModal = lazy(() => import('./components/admin/AdminLoginModal').then(m => ({ default: m.AdminLoginModal })));
+const LandingPageView = lazy(() => import('./components/landing/LandingPageView').then(m => ({ default: m.LandingPageView })));
+const ProductFormModal = lazy(() => import('./components/admin/ProductFormModal').then(m => ({ default: m.ProductFormModal })));
+const LandingPageFormModal = lazy(() => import('./components/admin/LandingPageFormModal').then(m => ({ default: m.LandingPageFormModal })));
+
+const SuspenseLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-10 h-10 border-3 border-[#00C853] border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs font-semibold text-slate-500">লোড হচ্ছে...</span>
+    </div>
+  </div>
+);
 import {
   getSupabase,
   fetchCloudProducts,
@@ -557,7 +568,7 @@ export function App() {
   if (isAdminView) {
     if (!isAdminAuthenticated) {
       return (
-        <>
+        <Suspense fallback={<SuspenseLoader />}>
           <AdminLoginModal
             isOpen={true}
             onClose={closeAdmin}
@@ -569,12 +580,12 @@ export function App() {
             adminPasswordHash={settings.adminPasswordHash}
           />
           <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
-        </>
+        </Suspense>
       );
     }
 
     return (
-      <>
+      <Suspense fallback={<SuspenseLoader />}>
         <AdminDashboard
           products={products}
           onSaveProduct={handleSaveProduct}
@@ -596,7 +607,7 @@ export function App() {
           onLogout={handleAdminLogout}
         />
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
-      </>
+      </Suspense>
     );
   }
 
@@ -605,7 +616,7 @@ export function App() {
 
   if (activeLandingPage) {
     return (
-      <>
+      <Suspense fallback={<SuspenseLoader />}>
         <LandingPageView
           landingPage={activeLandingPage}
           onPlaceOrder={handlePlaceOrder}
@@ -626,7 +637,7 @@ export function App() {
           settings={settings}
         />
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
-      </>
+      </Suspense>
     );
   }
 
@@ -999,30 +1010,38 @@ export function App() {
       />
 
       {/* Storefront In-Line Quick Edit Product Modal */}
-      <ProductFormModal
-        isOpen={isStoreProductModalOpen}
-        onClose={() => {
-          setIsStoreProductModalOpen(false);
-          setEditingStoreProduct(null);
-        }}
-        productToEdit={editingStoreProduct}
-        onSave={(saved) => {
-          handleSaveProduct(saved);
-          setIsStoreProductModalOpen(false);
-          setEditingStoreProduct(null);
-        }}
-      />
+      {isStoreProductModalOpen && (
+        <Suspense fallback={null}>
+          <ProductFormModal
+            isOpen={isStoreProductModalOpen}
+            onClose={() => {
+              setIsStoreProductModalOpen(false);
+              setEditingStoreProduct(null);
+            }}
+            productToEdit={editingStoreProduct}
+            onSave={(saved) => {
+              handleSaveProduct(saved);
+              setIsStoreProductModalOpen(false);
+              setEditingStoreProduct(null);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Storefront Quick Add Landing Page Modal */}
-      <LandingPageFormModal
-        isOpen={isStoreLandingModalOpen}
-        onClose={() => setIsStoreLandingModalOpen(false)}
-        landingPageToEdit={null}
-        onSave={(saved) => {
-          handleSaveLandingPage(saved);
-          setIsStoreLandingModalOpen(false);
-        }}
-      />
+      {isStoreLandingModalOpen && (
+        <Suspense fallback={null}>
+          <LandingPageFormModal
+            isOpen={isStoreLandingModalOpen}
+            onClose={() => setIsStoreLandingModalOpen(false)}
+            landingPageToEdit={null}
+            onSave={(saved) => {
+              handleSaveLandingPage(saved);
+              setIsStoreLandingModalOpen(false);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Sticky WhatsApp Floater (Desktop/Tablet) */}
       <div className="hidden md:block">

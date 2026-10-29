@@ -43,7 +43,7 @@ export const ProductCardBanner: React.FC<ProductCardBannerProps> = ({ product })
         <div className="w-full h-full bg-gradient-to-br from-[#FEF7EE] via-[#FFFDF9] to-[#F0FDF4] relative flex flex-col items-center justify-between p-4 overflow-hidden select-none">
           <div className="w-full flex justify-between items-center text-[10px] font-bold text-amber-700">
             <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">Google Gemini</span>
-            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">2TB Storage</span>
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">2TB Storage</span>
           </div>
           <div className="my-auto relative flex items-center justify-center">
             <div className="w-20 h-20 rounded-2xl bg-white shadow-xl border border-gray-100 flex items-center justify-center relative p-3">

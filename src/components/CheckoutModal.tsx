@@ -251,6 +251,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           setWhatsappOrderUrl(targetWhatsAppUrl);
           setOrderComplete(true);
           setIsVerifying(false);
+          onOrderSuccess();
           return;
         } else {
           setErrorMsg(verifyRes.message || 'Transaction ID not found in our records.');

@@ -48,8 +48,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* 1:1 Aspect Ratio Image Container (Woodmart .product-element-top) */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={`View details for ${product.title}`}
         onClick={() => onSelectProduct(product)}
-        className="w-full aspect-square rounded-xl overflow-hidden relative cursor-pointer bg-[#F8FAFC] border border-[#E2E8F0]/70"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelectProduct(product);
+          }
+        }}
+        className="w-full aspect-square rounded-xl overflow-hidden relative cursor-pointer bg-[#F8FAFC] border border-[#E2E8F0]/70 focus:outline-none focus:ring-2 focus:ring-[#00C853]"
       >
         {/* Instant Delivery Pill on top-left (Woodmart / MixProBD style) */}
         {(showInstantPill || product.instantDelivery) && !isSoldOut && (
@@ -93,8 +102,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Title & Star Rating Row (.mixprobd-card-title-row) */}
         <div className="flex items-center justify-center gap-1.5 w-full flex-wrap">
           <h3
+            role="button"
+            tabIndex={0}
             onClick={() => onSelectProduct(product)}
-            className="font-bold text-[13.5px] sm:text-[14px] text-[#0F172A] hover:text-[#00C853] cursor-pointer transition-colors line-clamp-2 max-w-full"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectProduct(product);
+              }
+            }}
+            className="font-bold text-[13.5px] sm:text-[14px] text-[#0F172A] hover:text-[#00C853] cursor-pointer transition-colors line-clamp-2 max-w-full focus:outline-none focus:text-[#00C853]"
             title={product.title}
           >
             {product.title}

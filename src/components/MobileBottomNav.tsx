@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Store, Layers, Search, ShoppingBag, MessageCircle } from 'lucide-react';
 import { StoreSettings } from '../types';
 import { getWhatsAppUrl } from '../utils/paymentHelpers';
@@ -20,6 +20,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onGoHome,
   settings,
 }) => {
+  const [activeTab, setActiveTab] = useState<'store' | 'categories' | 'search' | 'cart'>('store');
   const whatsappUrl = getWhatsAppUrl(settings?.whatsappNumber);
 
   return (
@@ -27,38 +28,58 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       
       {/* Home / Store */}
       <button
-        onClick={onGoHome}
-        className="flex flex-col items-center justify-center p-1.5 text-xs hover:text-[#00C853] active:scale-95 transition-all"
+        onClick={() => {
+          setActiveTab('store');
+          onGoHome();
+        }}
+        className={`flex flex-col items-center justify-center p-1.5 text-xs active:scale-95 transition-all ${
+          activeTab === 'store' ? 'text-[#00C853]' : 'text-slate-600 hover:text-[#00C853]'
+        }`}
       >
-        <Store className="w-5 h-5 text-slate-600" />
-        <span className="text-[10px] font-semibold mt-0.5">Store</span>
+        <Store className={`w-5 h-5 ${activeTab === 'store' ? 'text-[#00C853]' : 'text-slate-600'}`} />
+        <span className="text-[10px] font-bold mt-0.5">Store</span>
       </button>
 
       {/* Categories */}
       <button
-        onClick={onOpenCategories}
-        className="flex flex-col items-center justify-center p-1.5 text-xs hover:text-[#00C853] active:scale-95 transition-all"
+        onClick={() => {
+          setActiveTab('categories');
+          onOpenCategories();
+        }}
+        className={`flex flex-col items-center justify-center p-1.5 text-xs active:scale-95 transition-all ${
+          activeTab === 'categories' ? 'text-[#00C853]' : 'text-slate-600 hover:text-[#00C853]'
+        }`}
       >
-        <Layers className="w-5 h-5 text-slate-600" />
-        <span className="text-[10px] font-semibold mt-0.5">Categories</span>
+        <Layers className={`w-5 h-5 ${activeTab === 'categories' ? 'text-[#00C853]' : 'text-slate-600'}`} />
+        <span className="text-[10px] font-bold mt-0.5">Categories</span>
       </button>
 
       {/* Search */}
       <button
-        onClick={onOpenSearch}
-        className="flex flex-col items-center justify-center p-1.5 text-xs hover:text-[#00C853] active:scale-95 transition-all"
+        onClick={() => {
+          setActiveTab('search');
+          onOpenSearch();
+        }}
+        className={`flex flex-col items-center justify-center p-1.5 text-xs active:scale-95 transition-all ${
+          activeTab === 'search' ? 'text-[#00C853]' : 'text-slate-600 hover:text-[#00C853]'
+        }`}
       >
-        <Search className="w-5 h-5 text-slate-600" />
-        <span className="text-[10px] font-semibold mt-0.5">Search</span>
+        <Search className={`w-5 h-5 ${activeTab === 'search' ? 'text-[#00C853]' : 'text-slate-600'}`} />
+        <span className="text-[10px] font-bold mt-0.5">Search</span>
       </button>
 
       {/* Cart */}
       <button
-        onClick={onOpenCart}
-        className="relative flex flex-col items-center justify-center p-1.5 text-xs text-[#00C853] active:scale-95 transition-all"
+        onClick={() => {
+          setActiveTab('cart');
+          onOpenCart();
+        }}
+        className={`relative flex flex-col items-center justify-center p-1.5 text-xs active:scale-95 transition-all ${
+          activeTab === 'cart' ? 'text-[#00C853]' : 'text-slate-600 hover:text-[#00C853]'
+        }`}
       >
         <div className="relative">
-          <ShoppingBag className="w-5 h-5" />
+          <ShoppingBag className={`w-5 h-5 ${activeTab === 'cart' ? 'text-[#00C853]' : 'text-slate-600'}`} />
           {cartCount > 0 && (
             <span className="absolute -top-1.5 -right-2 bg-red-600 text-white font-black text-[9px] min-w-[16px] h-4 rounded-full flex items-center justify-center px-0.5 border border-white shadow-sm">
               {cartCount}
@@ -73,7 +94,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex flex-col items-center justify-center p-1.5 text-xs text-[#25D366] active:scale-95 transition-all"
+        className="flex flex-col items-center justify-center p-1.5 text-xs text-[#25D366] hover:text-[#1eb854] active:scale-95 transition-all"
       >
         <MessageCircle className="w-5 h-5" />
         <span className="text-[10px] font-bold mt-0.5">Chat</span>

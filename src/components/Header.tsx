@@ -177,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
                             : formatPrice(prod.currentPrice || 0)}
                         </div>
                         {prod.discountPercent && (
-                          <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.2 rounded font-bold">
+                          <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold">
                             -{prod.discountPercent}%
                           </span>
                         )}
@@ -266,8 +266,66 @@ export const Header: React.FC<HeaderProps> = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search 26+ subscriptions..."
-              className="w-full bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#00C853] rounded-xl pl-10 pr-4 py-2 text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none focus:bg-white"
+              className="w-full bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#00C853] rounded-xl pl-10 pr-12 py-2 text-sm text-[#0F172A] placeholder-slate-400 focus:outline-none focus:bg-white"
             />
+            {searchQuery && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-800 bg-[#E2E8F0] px-1.5 py-0.5 rounded font-medium"
+              >
+                ✕
+              </button>
+            )}
+
+            {/* Mobile Instant Live Search Dropdown */}
+            {searchQuery.trim() && liveSearchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#CBD5E1] rounded-xl shadow-2xl overflow-hidden z-50">
+                <div className="p-2 border-b border-[#F1F5F9] bg-[#F8FAFC] text-[10px] text-slate-600 flex items-center justify-between font-bold px-3">
+                  <span>Quick Results ({liveSearchResults.length})</span>
+                  <span className="text-[#00C853]">Instant Search</span>
+                </div>
+                <div className="divide-y divide-[#F1F5F9] max-h-[300px] overflow-y-auto">
+                  {liveSearchResults.map((prod) => (
+                    <div
+                      key={prod.id}
+                      onClick={() => {
+                        onSelectProduct(prod);
+                        onSearchChange('');
+                      }}
+                      className="p-2.5 hover:bg-[#F8FAFC] active:bg-slate-100 cursor-pointer flex items-center justify-between gap-2.5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center p-0.5 flex-shrink-0 overflow-hidden">
+                          {prod.imageUrl ? (
+                            <img src={prod.imageUrl} alt={prod.title} className="w-full h-full object-contain" />
+                          ) : (
+                            <Icon name={prod.iconName} className="w-4 h-4 text-[#00C853]" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-[#0F172A] truncate">
+                            {prod.title}
+                          </div>
+                          <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                            <span>{prod.brand}</span>
+                            <span>•</span>
+                            <span className="text-amber-500 font-bold">★ {prod.rating}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-xs font-black text-[#00C853]">
+                          {prod.priceRange
+                            ? `${formatPrice(prod.priceRange.min)}`
+                            : formatPrice(prod.currentPrice || 0)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

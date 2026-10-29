@@ -104,10 +104,14 @@ export const Footer: React.FC<FooterProps> = ({
                 <MessageCircle className="w-4 h-4 text-[#00C853] flex-shrink-0" />
                 <span>WhatsApp: {displayPhone}</span>
               </a>
-              <div className="flex items-center gap-2 text-slate-700">
+              <a
+                href="mailto:support@toolzaibd.com"
+                className="flex items-center gap-2 text-slate-700 hover:text-[#00C853] transition-colors"
+                title="Send support email"
+              >
                 <Mail className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 <span>support@toolzaibd.com</span>
-              </div>
+              </a>
               <div className="flex items-center gap-2 text-slate-700">
                 <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <span>Dhaka, Bangladesh</span>

@@ -118,6 +118,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [bkashNumber, setBkashNumber] = useState(settings.bkashNumber);
   const [nagadNumber, setNagadNumber] = useState(settings.nagadNumber);
   const [rocketNumber, setRocketNumber] = useState(settings.rocketNumber);
+  const [upayNumber, setUpayNumber] = useState(settings.upayNumber || settings.nagadNumber);
   const [noticeText, setNoticeText] = useState(settings.announcementNotice);
   const [isNoticeActive, setIsNoticeActive] = useState(settings.isNoticeActive);
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -262,6 +263,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       bkashNumber,
       nagadNumber,
       rocketNumber,
+      upayNumber: upayNumber.trim() || undefined,
       announcementNotice: noticeText,
       isNoticeActive,
       resendApiKey: resendApiKey.trim() || undefined,
@@ -1501,6 +1503,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     type="text"
                     value={rocketNumber}
                     onChange={(e) => setRocketNumber(e.target.value)}
+                    className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#0072BC] mb-1">Upay Send Money Number</label>
+                  <input
+                    type="text"
+                    value={upayNumber}
+                    onChange={(e) => setUpayNumber(e.target.value)}
+                    placeholder="e.g. 01886822838"
                     className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A]"
                   />
                 </div>

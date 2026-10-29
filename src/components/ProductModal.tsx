@@ -44,7 +44,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const originalPrice = selectedVariant?.originalPrice || product.originalPrice;
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '৳';
+    return '৳' + price.toLocaleString('en-BD');
   };
 
   const handleDirectBuy = () => {
@@ -175,7 +175,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           <div className="text-xs sm:text-sm font-bold text-[#0F172A] flex items-center gap-2">
                             <span>{v.name}</span>
                             {v.isPopular && (
-                              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-bold border border-red-200">
+                              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold border border-red-200">
                                 Most Popular
                               </span>
                             )}
@@ -235,8 +235,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   {quantity}
                 </span>
                 <button
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => setQuantity(Math.min(20, quantity + 1))}
                   className="px-3 py-1.5 text-slate-600 hover:text-black hover:bg-[#F1F5F9] font-bold text-sm"
+                  title="Maximum 20 units"
                 >
                   +
                 </button>

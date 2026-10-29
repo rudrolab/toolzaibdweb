@@ -92,6 +92,7 @@ export interface StoreSettings {
   bkashNumber: string;
   nagadNumber: string;
   rocketNumber: string;
+  upayNumber?: string;
   announcementNotice: string;
   isNoticeActive: boolean;
   adminPasswordHash?: string;

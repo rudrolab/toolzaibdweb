@@ -19,6 +19,7 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
   const bkash = settings?.bkashNumber?.trim() || '01886822838';
   const nagad = settings?.nagadNumber?.trim() || '01886822838';
   const rocket = settings?.rocketNumber?.trim() || '01886822838-8';
+  const upay = settings?.upayNumber?.trim() || nagad;
 
   return [
     {
@@ -51,7 +52,7 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
     {
       id: 'upay',
       name: 'Upay',
-      number: nagad, // UPay uses Nagad fallback when not separately configured
+      number: upay,
       type: 'Personal (Send Money)',
       fee: '0%',
       color: '#0072BC',

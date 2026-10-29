@@ -68,7 +68,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const finalTotal = Math.max(0, rawSubtotal - discountAmount);
 
   const formatPrice = (p: number) => {
-    return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
+    return '৳' + p.toLocaleString('en-BD');
   };
 
   const handleApplyCoupon = (e: React.FormEvent) => {
@@ -252,7 +252,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </span>
                         <button
                           type="button"
-                          onClick={() => onUpdateQuantity(index, item.quantity + 1)}
+                          onClick={() => onUpdateQuantity(index, Math.min(20, item.quantity + 1))}
                           className="w-5 h-5 rounded flex items-center justify-center text-xs font-black text-slate-600 hover:bg-[#F1F5F9]"
                           aria-label="Increase quantity"
                         >
@@ -290,6 +290,55 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 Apply
               </button>
             </form>
+
+            {/* Quick Available Coupons */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-500 font-medium">অফার কুপন:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCouponCode('TOOLZAI10');
+                  setAppliedCoupon({
+                    id: 'c-10',
+                    code: 'TOOLZAI10',
+                    discountType: 'percent',
+                    discountValue: 10,
+                    isActive: true,
+                    usageCount: 0,
+                  });
+                  setCouponError('');
+                }}
+                className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition-all ${
+                  appliedCoupon?.code === 'TOOLZAI10'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                TOOLZAI10 (-10%)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCouponCode('WELCOME50');
+                  setAppliedCoupon({
+                    id: 'c-50',
+                    code: 'WELCOME50',
+                    discountType: 'fixed',
+                    discountValue: 50,
+                    isActive: true,
+                    usageCount: 0,
+                  });
+                  setCouponError('');
+                }}
+                className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition-all ${
+                  appliedCoupon?.code === 'WELCOME50'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                }`}
+              >
+                WELCOME50 (-৳50)
+              </button>
+            </div>
 
             {appliedCoupon && (
               <div className="flex items-center justify-between text-xs bg-[#E6FCED] border border-[#86EFAC] px-2.5 py-1.5 rounded-lg text-[#15803D]">

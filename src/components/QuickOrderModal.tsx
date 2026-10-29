@@ -157,19 +157,42 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
     }
 
     const matched = coupons.find((c) => c.code === code && c.isActive);
-    if (!matched) {
+    if (matched) {
+      if (matched.minSpend && rawSubtotal < matched.minSpend) {
+        setErrorMsg(`এই কুপনটি ব্যবহার করতে ন্যূনতম ৳${matched.minSpend} টাকার অর্ডার প্রয়োজন।`);
+        return;
+      }
+      setAppliedCoupon(matched);
+      setErrorMsg('');
+      if (onCouponUsed) onCouponUsed(matched.code);
+    } else if (code === 'WELCOME50') {
+      const welcomeCoupon: Coupon = {
+        id: 'c-welcome-50',
+        code: 'WELCOME50',
+        discountType: 'fixed',
+        discountValue: 50,
+        isActive: true,
+        usageCount: 0,
+      };
+      setAppliedCoupon(welcomeCoupon);
+      setErrorMsg('');
+      if (onCouponUsed) onCouponUsed(code);
+    } else if (code === 'TOOLZAI10') {
+      const toolzaiCoupon: Coupon = {
+        id: 'c-toolzai-10',
+        code: 'TOOLZAI10',
+        discountType: 'percent',
+        discountValue: 10,
+        isActive: true,
+        usageCount: 0,
+      };
+      setAppliedCoupon(toolzaiCoupon);
+      setErrorMsg('');
+      if (onCouponUsed) onCouponUsed(code);
+    } else {
       setErrorMsg('অবৈধ অথবা মেয়াদোত্তীর্ণ কুপন কোড।');
       return;
     }
-
-    if (matched.minSpend && rawSubtotal < matched.minSpend) {
-      setErrorMsg(`এই কুপনটি ব্যবহার করতে ন্যূনতম ৳${matched.minSpend} টাকার অর্ডার প্রয়োজন।`);
-      return;
-    }
-
-    setAppliedCoupon(matched);
-    setErrorMsg('');
-    if (onCouponUsed) onCouponUsed(matched.code);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -318,6 +341,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
           setWhatsappOrderUrl(targetWhatsAppUrl);
           setOrderComplete(true);
           setIsVerifying(false);
+          onOrderSuccess('Order placed! Digital license delivered.');
           return;
         } else {
           setErrorMsg(verifyRes.message || 'Transaction ID not found in our records.');
@@ -597,7 +621,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
               )}
 
               {/* Promo Code Input */}
-              <div className="mb-3 flex gap-2">
+              <div className="mb-2 flex gap-2">
                 <input
                   type="text"
                   value={couponCode}
@@ -611,6 +635,55 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                   className="rounded-lg bg-[#0057D0] hover:bg-[#004cb7] text-white text-xs font-semibold px-3.5 py-1.5 transition-colors"
                 >
                   Apply
+                </button>
+              </div>
+
+              {/* Quick Coupon Discoverability Pills */}
+              <div className="mb-3 flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-slate-500 font-medium">অফার কুপন:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCouponCode('TOOLZAI10');
+                    setAppliedCoupon({
+                      id: 'c-toolzai-10',
+                      code: 'TOOLZAI10',
+                      discountType: 'percent',
+                      discountValue: 10,
+                      isActive: true,
+                      usageCount: 0,
+                    });
+                    setErrorMsg('');
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition-all ${
+                    appliedCoupon?.code === 'TOOLZAI10'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                  }`}
+                >
+                  TOOLZAI10 (-10%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCouponCode('WELCOME50');
+                    setAppliedCoupon({
+                      id: 'c-welcome-50',
+                      code: 'WELCOME50',
+                      discountType: 'fixed',
+                      discountValue: 50,
+                      isActive: true,
+                      usageCount: 0,
+                    });
+                    setErrorMsg('');
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition-all ${
+                    appliedCoupon?.code === 'WELCOME50'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                  }`}
+                >
+                  WELCOME50 (-৳50)
                 </button>
               </div>
 

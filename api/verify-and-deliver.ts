@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const {
-      resendApiKey,
+      resendApiKey: clientApiKey,
       senderEmail,
       customerEmail,
       customerName,
@@ -34,8 +34,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       html: customHtml
     } = req.body;
 
+    const resendApiKey = process.env.RESEND_API_KEY || clientApiKey;
+
     if (!resendApiKey) {
-      return res.status(400).json({ error: 'Missing Resend API Key' });
+      return res.status(400).json({ error: 'Missing Resend API Key. Configure RESEND_API_KEY environment variable or in Admin Settings.' });
     }
 
     if (!customerEmail) {
