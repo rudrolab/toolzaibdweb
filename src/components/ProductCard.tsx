@@ -128,17 +128,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {/* Quick Order Button (Woodmart Signature Green) */}
+        {/* Direct Buy Now Button */}
         <button
           onClick={() => onQuickOrder(product)}
           disabled={isSoldOut}
-          className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs sm:text-[13px] tracking-wide text-white transition-all duration-200 shadow-sm flex items-center justify-center gap-1.5 ${
+          className={`w-full py-2.5 px-4 rounded-xl font-heading font-black text-xs sm:text-[13px] tracking-wide text-white transition-all duration-200 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer ${
             isSoldOut
               ? 'bg-gray-400 cursor-not-allowed opacity-80'
-              : 'bg-gradient-to-r from-[#00C853] to-[#009624] hover:from-[#00E676] hover:to-[#00C853] hover:shadow-[0_4px_14px_rgba(0,200,83,0.35)] active:scale-[0.98]'
+              : 'bg-gradient-to-r from-[#0052CC] to-[#003B95] hover:from-[#0B57D0] hover:to-[#0052CC] hover:shadow-[0_4px_14px_rgba(0,82,204,0.35)] active:scale-[0.98]'
           }`}
         >
-          {isSoldOut ? 'Sold out' : 'Quick Order'}
+          {isSoldOut ? 'Sold out' : '⚡ Buy Now (সরাসরি কিনুন)'}
         </button>
 
       </div>

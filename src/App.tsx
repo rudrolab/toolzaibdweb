@@ -897,6 +897,10 @@ export function App() {
         product={activeModalProduct}
         onClose={() => setActiveModalProduct(null)}
         onAddToCart={handleAddToCart}
+        onBuyNow={(prod) => {
+          setActiveModalProduct(null);
+          setQuickOrderProduct(prod);
+        }}
         settings={settings}
         onOpenPolicy={() => setIsPolicyModalOpen(true)}
       />

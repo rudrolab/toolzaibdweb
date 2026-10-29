@@ -8,6 +8,7 @@ interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (product: Product, variant?: ProductVariant, quantity?: number) => void;
+  onBuyNow?: (product: Product, variant?: ProductVariant, quantity?: number) => void;
   settings?: StoreSettings;
   onOpenPolicy?: () => void;
 }
@@ -16,6 +17,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onAddToCart,
+  onBuyNow,
   settings,
   onOpenPolicy,
 }) => {
@@ -42,7 +44,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const originalPrice = selectedVariant?.originalPrice || product.originalPrice;
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '৳';
+    return price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '৳';
+  };
+
+  const handleDirectBuy = () => {
+    if (onBuyNow) {
+      onBuyNow(product, selectedVariant, quantity);
+    } else {
+      onAddToCart(product, selectedVariant, quantity);
+    }
+    onClose();
   };
 
   const handleAdd = () => {
@@ -300,19 +311,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           ) : (
             <>
               <button
-                onClick={handleAdd}
-                className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00B248] text-white font-bold text-sm py-3 px-6 rounded-xl shadow-[0_4px_14px_rgba(0,200,83,0.3)] transition-all active:scale-95"
+                onClick={handleDirectBuy}
+                className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-[#0052CC] hover:bg-[#0047B3] text-white font-heading font-black text-sm py-3 px-6 rounded-xl shadow-[0_4px_14px_rgba(0,82,204,0.3)] transition-all active:scale-95 cursor-pointer"
               >
-                <ShoppingBag className="w-4 h-4" />
-                <span>Add to Cart ({formatPrice(currentPrice * quantity)})</span>
+                <Zap className="w-4 h-4 text-yellow-300" />
+                <span>Buy Now / সরাসরি কিনুন ({formatPrice(currentPrice * quantity)})</span>
+              </button>
+
+              <button
+                onClick={handleAdd}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs py-3 px-3.5 rounded-xl shadow-sm transition-all whitespace-nowrap cursor-pointer"
+                title="কার্টে যোগ করুন (একাধিক প্রডাক্ট একসাথে কেনার জন্য)"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />
+                <span>Add to Cart</span>
               </button>
 
               <button
                 onClick={handleWhatsAppBuy}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-sm py-3 px-5 rounded-xl shadow-md transition-all active:scale-95 whitespace-nowrap"
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-xs py-3 px-3.5 rounded-xl shadow-sm transition-all whitespace-nowrap cursor-pointer"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>Buy via WhatsApp</span>
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
               </button>
             </>
           )}
