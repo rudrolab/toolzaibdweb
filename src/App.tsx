@@ -15,6 +15,7 @@ import { OrderTrackingModal } from './components/OrderTrackingModal';
 import { PolicyModal } from './components/PolicyModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { FeaturesSection } from './components/FeaturesSection';
+import { HowItWorksSection } from './components/HowItWorksSection';
 import { CustomerReviews } from './components/CustomerReviews';
 import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
@@ -703,6 +704,9 @@ export function App() {
         onOpenPolicy={() => setIsPolicyModalOpen(true)}
       />
 
+      {/* 2.5 Visual 3-Step "How It Works" Workflow Guide */}
+      <HowItWorksSection />
+
       {/* 3. Products Catalog Section */}
       <main ref={productSectionRef} className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 w-full">
         
@@ -710,7 +714,7 @@ export function App() {
         <CountdownBanner />
 
         {/* Section Title & Sort Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 mt-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 mt-2">
           <div>
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#00C853] uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
@@ -722,7 +726,7 @@ export function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 bg-white border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs shadow-sm">
+            <div className="flex items-center gap-2 bg-white border border-[#CBD5E1] rounded-xl px-3 py-1.5 text-xs shadow-xs">
               <ArrowUpDown className="w-3.5 h-3.5 text-[#00C853]" />
               <select
                 value={sortBy}
@@ -737,6 +741,37 @@ export function App() {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Visual Category Filter Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 no-scrollbar">
+          {[
+            { id: 'all', label: 'সকল পণ্য', icon: '⚡' },
+            { id: 'ai', label: 'AI ও চ্যাটবট', icon: '🤖' },
+            { id: 'office', label: 'Office ও Windows', icon: '💼' },
+            { id: 'creative', label: 'Design ও Video', icon: '🎨' },
+            { id: 'streaming', label: 'Streaming ও OTT', icon: '🎬' },
+            { id: 'utilities', label: 'VPN ও Security', icon: '🔒' },
+            { id: 'social', label: 'Social & Growth', icon: '👥' },
+            { id: 'cards', label: 'Gift Cards', icon: '🎁' },
+          ].map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <button
+                type="button"
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 border ${
+                  isSelected
+                    ? 'bg-[#00C853] text-white border-[#00C853] shadow-md shadow-emerald-500/20 scale-[1.02]'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-[#00C853]/40 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-sm">{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Active Filter Tags */}
