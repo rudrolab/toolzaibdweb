@@ -405,7 +405,16 @@ export async function fetchCloudSettings(): Promise<StoreSettings | null> {
       rocketNumber: data.rocket_number,
       announcementNotice: data.announcement_notice,
       isNoticeActive: data.is_notice_active,
-      adminPasswordHash: data.admin_password_hash
+      adminPasswordHash: data.admin_password_hash,
+      resendApiKey: data.resend_api_key,
+      senderEmail: data.sender_email,
+      autoVerifyEnabled: data.auto_verify_enabled,
+      gatewayApiUrl: data.gateway_api_url,
+      firebaseProjectId: data.firebase_project_id,
+      firebaseApiKey: data.firebase_api_key,
+      firestoreCollectionName: data.firestore_collection_name,
+      firestoreTrxIdField: data.firestore_trx_id_field,
+      firestoreAmountField: data.firestore_amount_field
     };
   } catch (e) {
     console.error('fetchCloudSettings error:', e);
@@ -427,6 +436,15 @@ export async function saveCloudSettings(s: StoreSettings): Promise<boolean> {
       announcement_notice: s.announcementNotice,
       is_notice_active: s.isNoticeActive,
       admin_password_hash: s.adminPasswordHash,
+      resend_api_key: s.resendApiKey,
+      sender_email: s.senderEmail,
+      auto_verify_enabled: s.autoVerifyEnabled,
+      gateway_api_url: s.gatewayApiUrl,
+      firebase_project_id: s.firebaseProjectId,
+      firebase_api_key: s.firebaseApiKey,
+      firestore_collection_name: s.firestoreCollectionName,
+      firestore_trx_id_field: s.firestoreTrxIdField,
+      firestore_amount_field: s.firestoreAmountField,
       updated_at: new Date().toISOString()
     };
     const { error } = await sb.from('store_settings').upsert(row);
