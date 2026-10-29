@@ -553,11 +553,16 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
 
               {/* Product Option Variants (if any) */}
               {product.hasVariants && product.variants && product.variants.length > 0 && (
-                <div className="mb-3 space-y-1">
-                  <label className="block text-xs font-semibold text-[#30405a]">
-                    Select Option / Duration:
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
+                <div className="mb-4 rounded-xl border-2 border-[#0057D0]/20 bg-blue-50/40 p-3 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-[#1e293b]">
+                      প্যাকেজ / মেয়াদ নির্বাচন করুন (Select Plan):
+                    </label>
+                    <span className="text-[11px] font-semibold text-[#0057D0] bg-white px-2 py-0.5 rounded-full border border-blue-200">
+                      {selectedVariant?.name || 'সিলেক্ট করুন'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {product.variants.map((v) => {
                       const isSelected = selectedVariant?.id === v.id;
                       return (
@@ -565,14 +570,23 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           type="button"
                           key={v.id}
                           onClick={() => setSelectedVariant(v)}
-                          className={`text-xs font-semibold py-1 px-3 rounded-lg border transition-all text-left flex items-center gap-1.5 ${
+                          className={`relative text-xs py-2 px-3.5 rounded-lg border-2 transition-all duration-200 text-left flex items-center gap-2 cursor-pointer ${
                             isSelected
-                              ? 'bg-blue-50 text-[#0057D0] border-[#0057D0] shadow-sm'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                              ? 'bg-[#0057D0] text-white border-[#0057D0] shadow-md shadow-[#0057D0]/25 ring-2 ring-[#0057D0]/40 font-bold scale-[1.02]'
+                              : 'bg-white text-slate-700 border-slate-300 hover:border-[#0057D0]/50 hover:bg-slate-50 font-medium'
                           }`}
                         >
+                          {isSelected && (
+                            <span className="w-4 h-4 rounded-full bg-white text-[#0057D0] flex items-center justify-center text-[10px] font-black shrink-0">
+                              ✓
+                            </span>
+                          )}
                           <span>{v.name}</span>
-                          <span className={isSelected ? 'text-[#0057D0]' : 'text-slate-500'}>
+                          <span
+                            className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${
+                              isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#0057D0]'
+                            }`}
+                          >
                             ৳{v.price}
                           </span>
                         </button>
@@ -649,10 +663,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('bkash')}
-                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
-                        selectedPayment === 'bkash' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-all hover:shadow-lg ${
+                        selectedPayment === 'bkash'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md shadow-blue-900/10 bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
                       }`}
                     >
+                      {selectedPayment === 'bkash' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
                       <div className="flex h-14 w-full items-center justify-center px-3 py-2">
                         <img
                           className="h-10 w-full object-contain"
@@ -660,8 +681,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           src="https://pay.smmnea.com/assets/gateways/bkash/bkashpersonal.png"
                         />
                       </div>
-                      <div className="w-full border-t px-3 py-2">
-                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">Bkash Personal</p>
+                      <div className={`w-full border-t px-3 py-2 ${selectedPayment === 'bkash' ? 'bg-[#0057d0]/5 font-semibold text-[#0057d0]' : ''}`}>
+                        <p className="text-center text-xs tracking-wide text-[#222222]">Bkash Personal</p>
                       </div>
                     </button>
 
@@ -669,10 +690,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('nagad')}
-                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
-                        selectedPayment === 'nagad' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-all hover:shadow-lg ${
+                        selectedPayment === 'nagad'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md shadow-blue-900/10 bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
                       }`}
                     >
+                      {selectedPayment === 'nagad' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
                       <div className="flex h-14 w-full items-center justify-center px-3 py-2">
                         <img
                           className="h-10 w-full object-contain"
@@ -680,8 +708,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           src="https://pay.smmnea.com/assets/gateways/nagad/nagadpersonal.png"
                         />
                       </div>
-                      <div className="w-full border-t px-3 py-2">
-                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">Nagad Personal</p>
+                      <div className={`w-full border-t px-3 py-2 ${selectedPayment === 'nagad' ? 'bg-[#0057d0]/5 font-semibold text-[#0057d0]' : ''}`}>
+                        <p className="text-center text-xs tracking-wide text-[#222222]">Nagad Personal</p>
                       </div>
                     </button>
 
@@ -689,10 +717,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('rocket')}
-                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
-                        selectedPayment === 'rocket' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-all hover:shadow-lg ${
+                        selectedPayment === 'rocket'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md shadow-blue-900/10 bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
                       }`}
                     >
+                      {selectedPayment === 'rocket' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
                       <div className="flex h-14 w-full items-center justify-center px-3 py-2">
                         <img
                           className="h-10 w-full object-contain"
@@ -700,8 +735,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           src="https://pay.smmnea.com/assets/gateways/rocket/rocketpersonal.png"
                         />
                       </div>
-                      <div className="w-full border-t px-3 py-2">
-                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">Rocket Personal</p>
+                      <div className={`w-full border-t px-3 py-2 ${selectedPayment === 'rocket' ? 'bg-[#0057d0]/5 font-semibold text-[#0057d0]' : ''}`}>
+                        <p className="text-center text-xs tracking-wide text-[#222222]">Rocket Personal</p>
                       </div>
                     </button>
 
@@ -709,10 +744,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedPayment('upay')}
-                      className={`flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-shadow hover:shadow-lg hover:shadow-blue-900/5 ${
-                        selectedPayment === 'upay' ? 'border-[#0057d0] ring-1 ring-[#0057d0]' : 'border-[#E0E0E0]'
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-[#ffffff] transition-all hover:shadow-lg ${
+                        selectedPayment === 'upay'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md shadow-blue-900/10 bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
                       }`}
                     >
+                      {selectedPayment === 'upay' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
                       <div className="flex h-14 w-full items-center justify-center px-3 py-2">
                         <img
                           className="h-10 w-full object-contain"
@@ -720,30 +762,52 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
                           src="https://pay.smmnea.com/assets/gateways/upay/upaypersonal.png"
                         />
                       </div>
-                      <div className="w-full border-t px-3 py-2">
-                        <p className="text-center text-xs font-light tracking-wide text-[#222222]">UPay Personal</p>
+                      <div className={`w-full border-t px-3 py-2 ${selectedPayment === 'upay' ? 'bg-[#0057d0]/5 font-semibold text-[#0057d0]' : ''}`}>
+                        <p className="text-center text-xs tracking-wide text-[#222222]">UPay Personal</p>
                       </div>
                     </button>
                   </div>
 
-                  {/* Send Money Number Pill */}
-                  <div className="mb-3 rounded-lg border border-[#e1ecff] bg-white p-3 shadow-sm flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] text-[#6D7F9A] block font-medium">
-                        {activeMethod.name} Personal Send Money Number:
-                      </span>
-                      <span className="text-sm font-bold font-mono text-[#0057D0]">
-                        {activeMethod.number}
-                      </span>
+                  {/* Send Money Number & Step-by-Step Instructions */}
+                  <div className="mb-3 rounded-xl border border-[#cbe1ff] bg-white p-3.5 shadow-sm space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#eef4fc]">
+                      <div>
+                        <span className="text-[11px] text-[#6D7F9A] block font-medium">
+                          {activeMethod.name} Personal Send Money Number:
+                        </span>
+                        <span className="text-base font-bold font-mono text-[#0057D0] tracking-wide">
+                          {activeMethod.number}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyNumber(activeMethod.number || '')}
+                        className="flex items-center gap-1 rounded-lg border border-[#0057D0]/30 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#0057D0] hover:bg-blue-100 transition-colors shadow-xs"
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copied ? 'কপি হয়েছে' : 'কপি করুন'}</span>
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyNumber(activeMethod.number || '')}
-                      className="flex items-center gap-1 rounded-md border border-[#0057D0]/30 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#0057D0] hover:bg-blue-100 transition-colors"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copied ? 'কপি হয়েছে' : 'কপি করুন'}</span>
-                    </button>
+
+                    {/* Instructions */}
+                    <div className="rounded-lg bg-[#F8FAFC] border border-slate-200/70 p-2.5 text-[11.5px] text-[#334155] space-y-1.5">
+                      <p className="font-bold text-[#1e293b] text-xs flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#0057D0]"></span>
+                        টাকা পাঠানোর নিয়ম (Send Money Instructions):
+                      </p>
+                      <div className="flex items-start gap-2 pt-0.5">
+                        <span className="w-4 h-4 rounded-full bg-[#0057D0] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">১</span>
+                        <p>আপনার <strong>{activeMethod.name} অ্যাপ</strong> ওপেন করে <strong>Send Money</strong> সিলেক্ট করুন।</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="w-4 h-4 rounded-full bg-[#0057D0] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">২</span>
+                        <p>উপরে প্রদর্শিত নম্বরে সঠিক পরিমাণ <strong>৳{finalTotal}</strong> টাকা সেন্ড মানি করুন।</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="w-4 h-4 rounded-full bg-[#0057D0] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">৩</span>
+                        <p>টাকা পাঠানোর পর প্রাপ্ত <strong>Transaction ID (TrxID)</strong> টি নিচের বক্সে লিখে ভেরিফাই করুন।</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
