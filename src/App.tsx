@@ -686,6 +686,7 @@ export function App() {
           settings={settings}
           onOpenPolicy={() => setIsPolicyModalOpen(true)}
           onCouponUsed={handleCouponUsed}
+          onSaveLandingPage={handleSaveLandingPage}
         />
         <PolicyModal
           isOpen={isPolicyModalOpen}

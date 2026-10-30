@@ -13,10 +13,15 @@ import {
   Check,
   Store,
   LayoutDashboard,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 import { LandingPage, Order, Coupon, StoreSettings } from '../../types';
-import { getWhatsAppUrl } from '../../utils/paymentHelpers';
+import { getWhatsAppUrl, getStorePaymentMethods } from '../../utils/paymentHelpers';
+import {
+  verifyPaymentInFirestore,
+  sendDeliveryEmailViaResend
+} from '../../services/autoDelivery';
 import {
   sanitizeInput,
   isValidBDPhone,
@@ -34,6 +39,7 @@ interface LandingPageViewProps {
   settings?: StoreSettings;
   onOpenPolicy?: () => void;
   onCouponUsed?: (code: string) => void;
+  onSaveLandingPage?: (page: LandingPage) => void;
 }
 
 export const LandingPageView: React.FC<LandingPageViewProps> = ({
@@ -45,6 +51,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   settings,
   onOpenPolicy,
   onCouponUsed,
+  onSaveLandingPage,
 }) => {
   // Slider state
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -76,11 +83,39 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   const [appliedCouponObj, setAppliedCouponObj] = useState<Coupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedPayment, setSelectedPayment] = useState('eps');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [payStep, setPayStep] = useState(1);
   const [formError, setFormError] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState('');
+
+  // Live stock counts
+  const [liveStockRemaining, setLiveStockRemaining] = useState(landingPage.stockRemaining ?? 38);
+  const [liveStockSold, setLiveStockSold] = useState(landingPage.stockSold ?? 2002);
+
+  useEffect(() => {
+    setLiveStockRemaining(landingPage.stockRemaining ?? 38);
+    setLiveStockSold(landingPage.stockSold ?? 2002);
+  }, [landingPage]);
+
+  // Payment Gateway Modal State
+  const [isGatewayOpen, setIsGatewayOpen] = useState(false);
+  const paymentMethods = getStorePaymentMethods(settings);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(paymentMethods[0]?.id || 'bkash');
+  const [senderNumber, setSenderNumber] = useState('');
+  const [trxId, setTrxId] = useState('');
+  const [copiedNumber, setCopiedNumber] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+  const [copiedOrderId, setCopiedOrderId] = useState(false);
+  const [gatewayOrderId, setGatewayOrderId] = useState('');
+  const [gatewayErrorMsg, setGatewayErrorMsg] = useState('');
+
+  // Auto verification states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationStage, setVerificationStage] = useState<'verifying' | 'sending_email'>('verifying');
+  const [orderComplete, setOrderComplete] = useState(false);
+  const [autoDeliveredData, setAutoDeliveredData] = useState<{
+    credentials: string;
+    instructions: string;
+    emailSent: boolean;
+  } | null>(null);
 
   const checkoutRef = useRef<HTMLDivElement>(null);
 
@@ -204,14 +239,62 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
       return;
     }
 
-    setIsSubmitting(true);
-    setShowPayModal(true);
-    setPayStep(1);
-
+    // 5. Open Real Payment Gateway Modal
     const orderId = 'TZ-LP-' + Math.floor(100000 + Math.random() * 900000);
+    setGatewayOrderId(orderId);
+    setGatewayErrorMsg('');
+    setOrderComplete(false);
+    setAutoDeliveredData(null);
+    setIsVerifying(false);
+    setTrxId('');
+    setSenderNumber('');
+    setIsGatewayOpen(true);
+  };
+
+  const handleCopyPaymentNumber = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedNumber(true);
+      setTimeout(() => setCopiedNumber(false), 2000);
+    });
+  };
+
+  const handleCopyCredentials = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedCreds(true);
+      setTimeout(() => setCopiedCreds(false), 2000);
+    });
+  };
+
+  const handleCopyOrderId = (id: string) => {
+    navigator.clipboard.writeText(id).then(() => {
+      setCopiedOrderId(true);
+      setTimeout(() => setCopiedOrderId(false), 2000);
+    });
+  };
+
+  const handleVerifyAndDeliver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGatewayErrorMsg('');
+
+    const cleanSender = sanitizeInput(senderNumber);
+    const cleanTrx = sanitizeInput(trxId).toUpperCase();
+
+    if (!cleanTrx || cleanTrx.length < 4) {
+      setGatewayErrorMsg('অনুগ্রহ করে সঠিক ট্রানজেকশন আইডি (TrxID) প্রদান করুন।');
+      return;
+    }
+
+    const activeMethod = paymentMethods.find((m) => m.id === selectedPaymentMethod) || paymentMethods[0];
+    const cleanName = sanitizeInput(customerName);
+    const cleanPhone = sanitizeInput(customerPhone);
+    const cleanEmail = sanitizeInput(customerEmail);
+
+    const activationLink = `https://one.google.com/promo/gemini-advanced-18m-tz?ref=${gatewayOrderId}&email=${encodeURIComponent(cleanEmail)}`;
+    const credentialsText = `• ${landingPage.title} (Personal Account):\nঅফিসিয়াল অ্যাক্টিভেশন লিঙ্ক: ${activationLink}\nঅর্ডার আইডি: #${gatewayOrderId}\nমেয়াদ: ১৮ মাস (১.৫ বছর)\nস্টোরেজ: ৫TB Google One Cloud Storage\nমডেল: Gemini 3.1 Pro & 4 Argon আনলকড`;
+    const instructionsText = `১. আপনার ব্রাউজারে ${cleanEmail} জিমেইল লগইন থাকা অবস্থায় উপরের অফিসিয়াল অ্যাক্টিভেশন লিঙ্কে ক্লিক করুন।\n২. 'Claim 18 Months Offer' বা 'Accept Invitation' বাটনে ক্লিক করুন।\n৩. কোনো পাসওয়ার্ড বা কার্ড লাগবে না। আপনার অ্যাকাউন্টে ৫TB ক্লাউড স্টোরেজ ও Gemini Pro সাথে সাথে চালু হয়ে যাবে।\n৪. যেকোনো প্রয়োজনে আমাদের হোয়াটসঅ্যাপ হেল্পলাইনে মেসেজ দিন (${settings?.whatsappNumber || '+8801886822838'})।`;
 
     const newOrder: Order = {
-      id: orderId,
+      id: gatewayOrderId,
       customerName: cleanName,
       customerPhone: cleanPhone,
       customerEmail: cleanEmail,
@@ -227,40 +310,136 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
       subtotal: rawSubtotal,
       discount: discountAmount,
       total: finalTotal,
-      paymentMethod: selectedPayment === 'eps' ? 'bKash / Nagad / EPS' : 'bKash Send Money',
+      paymentMethod: activeMethod.name,
+      senderNumber: cleanSender || undefined,
+      trxId: cleanTrx,
       status: 'pending',
       createdAt: new Date().toISOString(),
       notes: `Order from Landing Page Campaign (${landingPage.slug})`,
     };
 
+    const canAutoVerify = Boolean(
+      settings?.autoVerifyEnabled &&
+      (settings?.firebaseProjectId || settings?.gatewayApiUrl) &&
+      cleanTrx
+    );
+
+    if (canAutoVerify) {
+      setIsVerifying(true);
+      setVerificationStage('verifying');
+
+      try {
+        const verifyRes = await verifyPaymentInFirestore({
+          settings: settings!,
+          trxId: cleanTrx,
+          requiredAmount: finalTotal,
+          orderId: gatewayOrderId,
+        });
+
+        if (verifyRes.success) {
+          setVerificationStage('sending_email');
+
+          // Deduct stock in real-time
+          const nextStockRemaining = Math.max(0, liveStockRemaining - quantity);
+          const nextStockSold = liveStockSold + quantity;
+          setLiveStockRemaining(nextStockRemaining);
+          setLiveStockSold(nextStockSold);
+
+          if (onSaveLandingPage) {
+            onSaveLandingPage({
+              ...landingPage,
+              stockRemaining: nextStockRemaining,
+              stockSold: nextStockSold,
+              conversionsCount: (landingPage.conversionsCount || 0) + 1,
+            });
+          }
+
+          // Send Delivery Email via Resend
+          let emailSent = false;
+          if (settings?.resendApiKey) {
+            const emailRes = await sendDeliveryEmailViaResend({
+              settings: settings!,
+              order: newOrder,
+              credentialsText,
+              instructionsText,
+            });
+            emailSent = emailRes.success;
+          }
+
+          newOrder.status = 'delivered';
+          newOrder.deliveryStatus = emailSent ? 'sent' : 'pending';
+          newOrder.deliveryCredentialsSent = credentialsText;
+          newOrder.verifiedAt = new Date().toISOString();
+          newOrder.notes = `⚡ Auto-Verified via Firebase (TrxID: ${cleanTrx}). Email: ${emailSent ? 'Sent' : 'Pending'}`;
+
+          onPlaceOrder(newOrder);
+
+          if (appliedCoupon && onCouponUsed) {
+            onCouponUsed(appliedCoupon);
+          }
+
+          setAutoDeliveredData({
+            credentials: credentialsText,
+            instructions: instructionsText,
+            emailSent,
+          });
+          setOrderComplete(true);
+          setIsVerifying(false);
+          return;
+        } else {
+          setGatewayErrorMsg(verifyRes.message || `TrxID "${cleanTrx}" ফায়ারবেসে পাওয়া যায়নি অথবা পেমেন্টের পরিমাণ সঠিক নয়।`);
+          setIsVerifying(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error('Firebase verification error:', err);
+        setGatewayErrorMsg(`ফায়ারবেস চেক করার সময় ত্রুটি ঘটেছে: ${err.message || 'Unknown error'}`);
+        setIsVerifying(false);
+        return;
+      }
+    }
+
+    // Default Fallback: deduct stock and deliver credentials/email
+    const nextStockRemaining = Math.max(0, liveStockRemaining - quantity);
+    const nextStockSold = liveStockSold + quantity;
+    setLiveStockRemaining(nextStockRemaining);
+    setLiveStockSold(nextStockSold);
+
+    if (onSaveLandingPage) {
+      onSaveLandingPage({
+        ...landingPage,
+        stockRemaining: nextStockRemaining,
+        stockSold: nextStockSold,
+        conversionsCount: (landingPage.conversionsCount || 0) + 1,
+      });
+    }
+
+    let emailSent = false;
+    if (settings?.resendApiKey) {
+      const emailRes = await sendDeliveryEmailViaResend({
+        settings: settings!,
+        order: newOrder,
+        credentialsText,
+        instructionsText,
+      });
+      emailSent = emailRes.success;
+    }
+
+    newOrder.status = 'pending';
+    newOrder.deliveryStatus = emailSent ? 'sent' : 'pending';
+    newOrder.deliveryCredentialsSent = credentialsText;
     onPlaceOrder(newOrder);
 
     if (appliedCoupon && onCouponUsed) {
       onCouponUsed(appliedCoupon);
     }
 
-    // Step 2 in pay modal
-    setTimeout(() => {
-      setPayStep(2);
-    }, 1000);
-
-    // Redirect to WhatsApp invoice
-    setTimeout(() => {
-      const msg =
-        `🎉 LANDING PAGE CAMPAIGN ORDER (#${orderId})\n\n` +
-        `Product: ${landingPage.title}\n` +
-        `Quantity: ${quantity}\n` +
-        `Total Payable: ${formatPrice(finalTotal)}\n` +
-        (discountAmount > 0 ? `Discount (${appliedCoupon}): -${formatPrice(discountAmount)}\n` : '') +
-        `Customer: ${cleanName}\n` +
-        `WhatsApp: ${cleanPhone}\n` +
-        `Gmail: ${cleanEmail}\n\n` +
-        `Please verify payment and dispatch activation link to Gmail.`;
-      const targetUrl = getWhatsAppUrl(settings?.whatsappNumber, msg);
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-      setIsSubmitting(false);
-      setShowPayModal(false);
-    }, 2400);
+    setAutoDeliveredData({
+      credentials: credentialsText,
+      instructions: instructionsText,
+      emailSent,
+    });
+    setOrderComplete(true);
   };
 
   return (
@@ -468,7 +647,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
                 🔥 দ্রুত ফুরিয়ে যাচ্ছে
               </span>
               <span className="text-slate-600">
-                স্টক বাকি: <strong className="text-[#00C853]">{landingPage.stockRemaining} টি</strong> | বিক্রি হয়েছে: <strong>{landingPage.stockSold} টি</strong>
+                স্টক বাকি: <strong className="text-[#00C853]">{liveStockRemaining} টি</strong> | বিক্রি হয়েছে: <strong>{liveStockSold} টি</strong>
               </span>
             </div>
             <div className="w-28 sm:w-36 h-2 bg-[#F1F5F9] rounded-full overflow-hidden flex-shrink-0">
@@ -845,8 +1024,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
                 {/* Submit Order Button */}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 bg-gradient-to-r from-[#00C853] to-[#00875a] hover:from-[#00B248] hover:to-[#00734d] text-white font-black text-sm sm:text-base rounded-xl shadow-[0_6px_20px_rgba(0,200,83,0.35)] transition-all active:scale-95 disabled:opacity-60"
+                  className="w-full py-3.5 bg-gradient-to-r from-[#00C853] to-[#00875a] hover:from-[#00B248] hover:to-[#00734d] text-white font-black text-sm sm:text-base rounded-xl shadow-[0_6px_20px_rgba(0,200,83,0.35)] transition-all active:scale-95 cursor-pointer"
                 >
                   পেমেন্ট করে অর্ডার করুন — {formatPrice(finalTotal)}
                 </button>
@@ -909,50 +1087,285 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
         </div>
       </div>
 
-      {/* Payment Gateway Loading Modal Simulation */}
-      {showPayModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
-            <div className="w-14 h-14 rounded-full bg-[#F0FDF4] border-2 border-[#00C853] text-[#00C853] flex items-center justify-center mx-auto shadow-md">
-              <Zap className="w-7 h-7" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="font-heading font-black text-lg text-[#0F172A]">
-                পেমেন্ট গেটওয়েতে সংযোগ হচ্ছে...
-              </h3>
-              <p className="text-xs text-slate-500">
-                নিরাপদ পেমেন্ট ও হোয়াটসঅ্যাপ ভেরিফিকেশনে রিডাইরেক্ট করা হচ্ছে
-              </p>
-            </div>
-
-            <div className="w-full h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#00C853] to-sky-400 rounded-full animate-pulse w-full" />
-            </div>
-
-            <div className="text-left text-xs space-y-1.5 bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
-              <div className="flex items-center gap-2 text-[#15803D] font-bold">
-                <Check className="w-4 h-4 text-[#00C853]" />
-                <span>অর্ডার ভ্যালিডেশন সম্পন্ন</span>
+      {/* Real Payment Gateway & Automated Verification Modal */}
+      {isGatewayOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in">
+          <div
+            className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl bg-white p-5 sm:min-w-[620px] sm:rounded-2xl sm:p-7 shadow-2xl border border-blue-100 font-['Poppins',sans-serif] my-auto"
+            style={{
+              backgroundImage: `linear-gradient(350deg, rgb(244, 249, 255), rgba(237, 244, 255, 0.79)), url("https://pay.smmnea.com/themes/default/assets/images/body.png")`,
+              backgroundSize: 'cover',
+            }}
+          >
+            {/* Top Bar */}
+            <div className="flex h-12 w-full items-center justify-between overflow-hidden rounded-xl bg-white p-4 shadow-sm border border-[#E2E8F0]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#00C853] animate-pulse" />
+                <span className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+                  Payment Gateway
+                </span>
+                <span className="text-xs text-slate-400">•</span>
+                <span className="font-mono text-xs font-bold text-blue-700">
+                  #{gatewayOrderId}
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                {payStep === 1 ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-[#00C853] border-t-transparent rounded-full animate-spin" />
-                    <span>পেমেন্ট গেটওয়ে প্রস্তুত হচ্ছে...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4 text-[#00C853]" />
-                    <span>হোয়াটসঅ্যাপে পাঠানো হচ্ছে...</span>
-                  </>
+              <button
+                type="button"
+                onClick={() => setIsGatewayOpen(false)}
+                className="grid h-7 w-7 place-content-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Verification Loading State */}
+            {isVerifying ? (
+              <div className="p-8 sm:p-12 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-blue-50 border-2 border-[#0057d0] text-[#0057d0] flex items-center justify-center mx-auto animate-spin">
+                  <Zap className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-[#0F172A]">
+                    {verificationStage === 'verifying'
+                      ? 'ফায়ারবেস ডেটাবেসে TrxID যাচাই করা হচ্ছে...'
+                      : 'পেমেন্ট ভেরিফাইড! স্টক থেকে অ্যাক্টিভেশন পাঠানো হচ্ছে...'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    অনুগ্রহ করে ৫-১০ সেকেন্ড অপেক্ষা করুন, লাইসেন্স ডেলিভারি হচ্ছে...
+                  </p>
+                </div>
+              </div>
+            ) : orderComplete ? (
+              /* Order Complete & Instant Delivery View */
+              <div className="p-4 sm:p-6 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00C853] flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="bg-[#DCFCE7] text-[#15803D] text-[10.5px] font-black uppercase px-2.5 py-0.5 rounded-full inline-block">
+                    ⚡ Instant Delivery Completed
+                  </span>
+                  <h3 className="text-xl font-bold text-[#0F172A]">
+                    পেমেন্ট ভেরিফাইড ও অ্যাক্টিভেশন সম্পন্ন!
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    আপনার ডিজিটাল অ্যাক্টিভেশন লিঙ্ক সরাসরি <strong className="text-blue-700">{customerEmail}</strong> এ পাঠিয়ে দেওয়া হয়েছে।
+                  </p>
+                </div>
+
+                {/* Instant On-Screen Credential Box */}
+                {autoDeliveredData && (
+                  <div className="text-left bg-[#0F172A] border border-slate-800 rounded-xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-300">
+                      <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                        <Zap className="w-3.5 h-3.5" /> অ্যাক্টিভেশন তথ্য (On-Screen Access):
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCredentials(autoDeliveredData.credentials)}
+                        className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-[11px] bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        {copiedCreds ? <Check className="w-3 h-3 text-[#00C853]" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedCreds ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    </div>
+                    <pre className="font-mono text-xs text-emerald-300 whitespace-pre-wrap break-all bg-black/40 p-2.5 rounded-lg border border-slate-800/80">
+                      {autoDeliveredData.credentials}
+                    </pre>
+                    {autoDeliveredData.instructions && (
+                      <p className="text-[11px] text-slate-300 whitespace-pre-line pt-2 border-t border-slate-800/80 leading-relaxed">
+                        {autoDeliveredData.instructions}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
-            </div>
 
-            <div className="text-[11px] text-slate-500">
-              🔒 SSL 256-Bit Encrypted • bKash • Nagad • Rocket
-            </div>
+                {/* Order ID Pill */}
+                <div className="flex items-center justify-center gap-2 max-w-xs mx-auto p-2 bg-[#F0FDF4] border border-[#86EFAC] rounded-xl text-xs">
+                  <span className="text-slate-600 font-semibold">Order ID:</span>
+                  <span className="font-mono font-black text-sm text-[#15803D]">{gatewayOrderId}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyOrderId(gatewayOrderId)}
+                    className="p-1 hover:bg-white rounded text-slate-500 hover:text-[#00C853] cursor-pointer"
+                  >
+                    {copiedOrderId ? <Check className="w-3.5 h-3.5 text-[#00C853]" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+                  <a
+                    href={getWhatsAppUrl(settings?.whatsappNumber, `Hello ToolzAi BD, I have paid for order #${gatewayOrderId} (${landingPage.title}). TrxID: ${trxId}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold text-xs py-3 px-5 rounded-xl shadow-md transition-all cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>হোয়াটসঅ্যাপে হেল্প নিন</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGatewayOpen(false);
+                      setOrderComplete(false);
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 px-5 rounded-xl transition-all cursor-pointer"
+                  >
+                    <span>মূল পেজে ফিরে যান</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Payment Methods & Verification Form */
+              <form onSubmit={handleVerifyAndDeliver} className="mt-4 space-y-4">
+                
+                {/* Order Summary Strip */}
+                <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] text-slate-500 block">প্রোডাক্ট: {landingPage.title}</span>
+                    <span className="text-xs font-bold text-[#0F172A]">{customerName} • {customerEmail}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] text-slate-500 block">মোট প্রদেয়</span>
+                    <span className="text-xl font-black text-[#00C853] font-mono">{formatPrice(finalTotal)}</span>
+                  </div>
+                </div>
+
+                {/* Payment Method Selector Tabs */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider block">
+                    পেমেন্ট মেথড সিলেক্ট করুন:
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                    {paymentMethods.map((method) => {
+                      const isSelected = selectedPaymentMethod === method.id;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setSelectedPaymentMethod(method.id)}
+                          className={`py-2 px-1.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-50 border-[#0057d0] text-[#0057d0] font-bold shadow-sm ring-1 ring-[#0057d0]'
+                              : 'bg-white border-[#E2E8F0] text-slate-600 hover:border-slate-300'
+                          }`}
+                        >
+                          <span className="text-xs font-extrabold">{method.name}</span>
+                          <span className="text-[9px] opacity-75">{method.fee} Fee</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Selected Method Send Money Instructions & Copy Box */}
+                {(() => {
+                  const activeMethod = paymentMethods.find((m) => m.id === selectedPaymentMethod) || paymentMethods[0];
+                  return (
+                    <div className="p-4 rounded-xl bg-white border-2 border-blue-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-extrabold text-blue-900 block">{activeMethod.name} Personal Number:</span>
+                          <span className="text-[11px] text-slate-500">নিচের নম্বরে Send Money করুন</span>
+                        </div>
+                        <span className="bg-emerald-100 text-[#15803D] text-[10px] font-black px-2 py-0.5 rounded-full">
+                          0% Fee
+                        </span>
+                      </div>
+
+                      {/* Number & Copy Button */}
+                      <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="font-mono text-base sm:text-lg font-black text-[#0F172A] tracking-wider">
+                          {activeMethod.number || activeMethod.address}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPaymentNumber(activeMethod.number || activeMethod.address || '')}
+                          className="px-3 py-1.5 bg-[#0052CC] hover:bg-[#0047B3] text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                        >
+                          {copiedNumber ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedNumber ? 'কপি হয়েছে!' : 'কপি করুন'}</span>
+                        </button>
+                      </div>
+
+                      {/* Step-by-step guidance */}
+                      <div className="text-[11px] text-slate-600 space-y-1 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100">
+                        <p>১. আপনার <strong>{activeMethod.name}</strong> অ্যাপে প্রবেশ করে <strong>Send Money</strong> সিলেক্ট করুন।</p>
+                        <p>২. উপরের নম্বরে সর্বমোট <strong>{formatPrice(finalTotal)}</strong> টাকা পাঠান।</p>
+                        <p>৩. সফল লেনদেনের পর TrxID ও সেন্ডার নম্বর দিয়ে নিচে <strong>'পেমেন্ট ভেরিফাই ও অ্যাক্টিভেশন নিন'</strong> বাটনে ক্লিক করুন।</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Input Fields: Sender Phone & TrxID */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      সেন্ডার নম্বর (যেখান থেকে টাকা পাঠিয়েছেন):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="017XXXXXXXX"
+                      value={senderNumber}
+                      onChange={(e) => setSenderNumber(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#0057d0] bg-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      ট্রানজেকশন আইডি (TrxID) <span className="text-red-500">*</span>:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="যেমন: BKL764ABCD"
+                      value={trxId}
+                      onChange={(e) => setTrxId(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border-2 border-emerald-400 focus:outline-none focus:border-emerald-600 bg-white font-mono font-bold text-slate-800 uppercase"
+                    />
+                  </div>
+                </div>
+
+                {/* Error Banner if any */}
+                {gatewayErrorMsg && (
+                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <span className="font-bold block">{gatewayErrorMsg}</span>
+                      <a
+                        href={getWhatsAppUrl(settings?.whatsappNumber, `Hello, my TrxID is: ${trxId} for order #${gatewayOrderId}. Please assist with verification.`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-blue-700 font-bold underline block"
+                      >
+                        প্রয়োজনে হোয়াটসঅ্যাপে যোগাযোগ করুন ➔
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Verify & Deliver Button */}
+                <button
+                  type="submit"
+                  disabled={isVerifying || !trxId.trim()}
+                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-white bg-gradient-to-r from-[#00C853] via-emerald-600 to-[#00875a] hover:from-[#00B248] hover:to-[#00734d] shadow-[0_6px_20px_rgba(0,200,83,0.35)] transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 text-yellow-300 fill-yellow-300" />
+                  <span>⚡ পেমেন্ট ভেরিফাই ও অ্যাক্টিভেশন নিন</span>
+                </button>
+
+                <div className="text-center text-[10px] text-slate-400">
+                  🔒 256-Bit SSL Encrypted • Direct Firestore Auto-Verification
+                </div>
+
+              </form>
+            )}
+
           </div>
         </div>
       )}
