@@ -7,12 +7,6 @@ import { CountdownBanner } from './components/CountdownBanner';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
-import { ProductModal } from './components/ProductModal';
-import { QuickOrderModal } from './components/QuickOrderModal';
-import { CartDrawer } from './components/CartDrawer';
-import { CheckoutModal } from './components/CheckoutModal';
-import { OrderTrackingModal } from './components/OrderTrackingModal';
-import { PolicyModal } from './components/PolicyModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { FeaturesSection } from './components/FeaturesSection';
 import { HowItWorksSection } from './components/HowItWorksSection';
@@ -23,6 +17,14 @@ import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Toast } from './components/Toast';
 import { AdminQuickBar } from './components/admin/AdminQuickBar';
 import { Search, Sparkles, Filter, ArrowUpDown, Megaphone, Flame } from 'lucide-react';
+
+// Lazy-load customer interaction modals to minimize initial bundle size and FCP
+const QuickOrderModal = lazy(() => import('./components/QuickOrderModal').then(m => ({ default: m.QuickOrderModal })));
+const ProductModal = lazy(() => import('./components/ProductModal').then(m => ({ default: m.ProductModal })));
+const CartDrawer = lazy(() => import('./components/CartDrawer').then(m => ({ default: m.CartDrawer })));
+const CheckoutModal = lazy(() => import('./components/CheckoutModal').then(m => ({ default: m.CheckoutModal })));
+const OrderTrackingModal = lazy(() => import('./components/OrderTrackingModal').then(m => ({ default: m.OrderTrackingModal })));
+const PolicyModal = lazy(() => import('./components/PolicyModal').then(m => ({ default: m.PolicyModal })));
 
 // Code-split heavy admin and landing page modules to optimize storefront performance
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -216,6 +218,16 @@ export function App() {
       console.error(e);
     }
   }, [settings]);
+
+  // Idle preloader for interactive customer modals to ensure 0ms latency when clicked
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      import('./components/QuickOrderModal');
+      import('./components/ProductModal');
+      import('./components/CartDrawer');
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     try {
@@ -927,71 +939,95 @@ export function App() {
       />
 
       {/* Quick Order Popup Modal */}
-      <QuickOrderModal
-        product={quickOrderProduct}
-        products={products}
-        onClose={() => setQuickOrderProduct(null)}
-        onOrderSuccess={(msg) => setToastMessage(msg)}
-        onPlaceOrder={handlePlaceOrder}
-        coupons={coupons}
-        settings={settings}
-        onOpenPolicy={() => setIsPolicyModalOpen(true)}
-        onCouponUsed={handleCouponUsed}
-      />
+      {quickOrderProduct && (
+        <Suspense fallback={null}>
+          <QuickOrderModal
+            product={quickOrderProduct}
+            products={products}
+            onClose={() => setQuickOrderProduct(null)}
+            onOrderSuccess={(msg) => setToastMessage(msg)}
+            onPlaceOrder={handlePlaceOrder}
+            coupons={coupons}
+            settings={settings}
+            onOpenPolicy={() => setIsPolicyModalOpen(true)}
+            onCouponUsed={handleCouponUsed}
+          />
+        </Suspense>
+      )}
 
       {/* Product Details & Specs Modal */}
-      <ProductModal
-        product={activeModalProduct}
-        onClose={() => setActiveModalProduct(null)}
-        onAddToCart={handleAddToCart}
-        onBuyNow={(prod) => {
-          setActiveModalProduct(null);
-          setQuickOrderProduct(prod);
-        }}
-        settings={settings}
-        onOpenPolicy={() => setIsPolicyModalOpen(true)}
-      />
+      {activeModalProduct && (
+        <Suspense fallback={null}>
+          <ProductModal
+            product={activeModalProduct}
+            onClose={() => setActiveModalProduct(null)}
+            onAddToCart={handleAddToCart}
+            onBuyNow={(prod) => {
+              setActiveModalProduct(null);
+              setQuickOrderProduct(prod);
+            }}
+            settings={settings}
+            onOpenPolicy={() => setIsPolicyModalOpen(true)}
+          />
+        </Suspense>
+      )}
 
       {/* Cart Drawer */}
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onOpenCheckout={handleOpenCheckout}
-        coupons={coupons}
-        settings={settings}
-        onOpenPolicy={() => setIsPolicyModalOpen(true)}
-      />
+      {isCartOpen && (
+        <Suspense fallback={null}>
+          <CartDrawer
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cartItems={cartItems}
+            onUpdateQuantity={handleUpdateQuantity}
+            onRemoveItem={handleRemoveItem}
+            onOpenCheckout={handleOpenCheckout}
+            coupons={coupons}
+            settings={settings}
+            onOpenPolicy={() => setIsPolicyModalOpen(true)}
+          />
+        </Suspense>
+      )}
 
       {/* Checkout Modal */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        cartItems={cartItems}
-        products={products}
-        discountAmount={checkoutDiscount}
-        couponCode={checkoutCoupon}
-        onOrderSuccess={() => setToastMessage('Order received! Redirecting to WhatsApp...')}
-        onPlaceOrder={handlePlaceOrder}
-        settings={settings}
-        onOpenPolicy={() => setIsPolicyModalOpen(true)}
-      />
+      {isCheckoutOpen && (
+        <Suspense fallback={null}>
+          <CheckoutModal
+            isOpen={isCheckoutOpen}
+            onClose={() => setIsCheckoutOpen(false)}
+            cartItems={cartItems}
+            products={products}
+            discountAmount={checkoutDiscount}
+            couponCode={checkoutCoupon}
+            onOrderSuccess={() => setToastMessage('Order received! Redirecting to WhatsApp...')}
+            onPlaceOrder={handlePlaceOrder}
+            settings={settings}
+            onOpenPolicy={() => setIsPolicyModalOpen(true)}
+          />
+        </Suspense>
+      )}
 
       {/* Customer Trust, Warranty & Refund Policy Modal */}
-      <PolicyModal
-        isOpen={isPolicyModalOpen}
-        onClose={() => setIsPolicyModalOpen(false)}
-        settings={settings}
-      />
+      {isPolicyModalOpen && (
+        <Suspense fallback={null}>
+          <PolicyModal
+            isOpen={isPolicyModalOpen}
+            onClose={() => setIsPolicyModalOpen(false)}
+            settings={settings}
+          />
+        </Suspense>
+      )}
 
       {/* Order Tracking Modal (With Privacy Protection & Two-Factor Verification) */}
-      <OrderTrackingModal
-        isOpen={isTrackOrderOpen}
-        onClose={() => setIsTrackOrderOpen(false)}
-        orders={orders}
-      />
+      {isTrackOrderOpen && (
+        <Suspense fallback={null}>
+          <OrderTrackingModal
+            isOpen={isTrackOrderOpen}
+            onClose={() => setIsTrackOrderOpen(false)}
+            orders={orders}
+          />
+        </Suspense>
+      )}
 
       {/* Admin Login Modal (Triggered when accessing admin console) */}
       <AdminLoginModal
