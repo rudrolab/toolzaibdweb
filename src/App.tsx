@@ -25,6 +25,7 @@ const CartDrawer = lazy(() => import('./components/CartDrawer').then(m => ({ def
 const CheckoutModal = lazy(() => import('./components/CheckoutModal').then(m => ({ default: m.CheckoutModal })));
 const OrderTrackingModal = lazy(() => import('./components/OrderTrackingModal').then(m => ({ default: m.OrderTrackingModal })));
 const PolicyModal = lazy(() => import('./components/PolicyModal').then(m => ({ default: m.PolicyModal })));
+const ProductPageView = lazy(() => import('./components/ProductPageView').then(m => ({ default: m.ProductPageView })));
 
 // Code-split heavy admin and landing page modules to optimize storefront performance
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -133,6 +134,22 @@ export function App() {
     return null;
   };
 
+  // Helper to extract product from URL hash (#product=... or #p=...)
+  const getProductFromHash = (list: Product[]): Product | null => {
+    const clean = window.location.hash.replace(/^#\/?/, '').trim();
+    if (!clean) return null;
+    let targetId = '';
+    if (clean.startsWith('product=')) {
+      targetId = clean.split('product=')[1];
+    } else if (clean.startsWith('p=')) {
+      targetId = clean.split('p=')[1];
+    } else if (clean.startsWith('product/')) {
+      targetId = clean.split('product/')[1];
+    }
+    if (!targetId) return null;
+    return list.find((p) => p.id === targetId || p.id === decodeURIComponent(targetId)) || null;
+  };
+
   // 7. Navigation, Filters, Modals & Admin Security
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
@@ -155,6 +172,17 @@ export function App() {
     return window.location.hash === '#admin' && !isAdminAuthenticated;
   });
   const [activeLandingSlug, setActiveLandingSlug] = useState<string | null>(() => getLandingSlug());
+  const [selectedProductPage, setSelectedProductPage] = useState<Product | null>(() => {
+    try {
+      const saved = localStorage.getItem('toolzaibd_products');
+      const initialList = saved ? JSON.parse(saved) : PRODUCTS_DATA;
+      return getProductFromHash(initialList);
+    } catch {
+      return getProductFromHash(PRODUCTS_DATA);
+    }
+  });
+  const [quickOrderVariant, setQuickOrderVariant] = useState<ProductVariant | undefined>(undefined);
+  const [quickOrderQuantity, setQuickOrderQuantity] = useState<number>(1);
 
   // Storefront Quick-Edit & Cloud Sync states
   const [quickEditMode, setQuickEditMode] = useState<boolean>(false);
@@ -168,6 +196,20 @@ export function App() {
   const [sortBy, setSortBy] = useState<string>('featured');
   const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
   const [quickOrderProduct, setQuickOrderProduct] = useState<Product | null>(null);
+
+  const handleOpenProductPage = (product: Product) => {
+    setSelectedProductPage(product);
+    window.location.hash = `product=${product.id}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCloseProductPage = () => {
+    setSelectedProductPage(null);
+    if (window.location.hash.includes('product=') || window.location.hash.includes('product/')) {
+      window.location.hash = '';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [isTrackOrderOpen, setIsTrackOrderOpen] = useState<boolean>(false);
@@ -246,10 +288,12 @@ export function App() {
         setIsAdminLoginOpen(true);
       }
       setActiveLandingSlug(getLandingSlug());
+      const hashProd = getProductFromHash(products);
+      setSelectedProductPage(hashProd);
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [isAdminAuthenticated]);
+  }, [isAdminAuthenticated, products]);
 
   // Cloud Database Sync on Mount
   useEffect(() => {
@@ -524,7 +568,7 @@ export function App() {
 
   const handleAddToCart = (product: Product, variant?: ProductVariant, quantity = 1) => {
     if (product.hasVariants && !variant) {
-      setActiveModalProduct(product);
+      handleOpenProductPage(product);
       return;
     }
 
@@ -712,14 +756,41 @@ export function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-        onSelectProduct={(p) => setActiveModalProduct(p)}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          if (selectedProductPage) {
+            handleCloseProductPage();
+          }
+        }}
+        onSelectProduct={(p) => handleOpenProductPage(p)}
         onOpenTrackOrder={() => setIsTrackOrderOpen(true)}
         onOpenAdmin={openAdmin}
         settings={settings}
         onOpenPolicy={() => setIsPolicyModalOpen(true)}
         products={products}
       />
+
+      {/* Main Content Area: Dedicated In-Page Product View OR Storefront Home */}
+      {selectedProductPage ? (
+        <Suspense fallback={<SuspenseLoader />}>
+          <ProductPageView
+            product={selectedProductPage}
+            allProducts={products}
+            onBack={handleCloseProductPage}
+            onAddToCart={handleAddToCart}
+            onBuyNow={(prod, variant, qty) => {
+              setQuickOrderVariant(variant);
+              setQuickOrderQuantity(qty || 1);
+              setQuickOrderProduct(prod);
+            }}
+            onSelectProduct={handleOpenProductPage}
+            settings={settings}
+            coupons={coupons}
+            onOpenPolicy={() => setIsPolicyModalOpen(true)}
+          />
+        </Suspense>
+      ) : (
+        <>
 
       {/* 2. Hero Section */}
       <Hero
@@ -850,8 +921,12 @@ export function App() {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onSelectProduct={(p) => setActiveModalProduct(p)}
-                  onQuickOrder={(p) => setQuickOrderProduct(p)}
+                  onSelectProduct={(p) => handleOpenProductPage(p)}
+                  onQuickOrder={(p) => {
+                    setQuickOrderVariant(undefined);
+                    setQuickOrderQuantity(1);
+                    setQuickOrderProduct(p);
+                  }}
                   showInstantPill={true}
                   quickEditMode={quickEditMode}
                   onQuickEdit={(p) => {
@@ -882,8 +957,12 @@ export function App() {
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onSelectProduct={(p) => setActiveModalProduct(p)}
-                    onQuickOrder={(p) => setQuickOrderProduct(p)}
+                    onSelectProduct={(p) => handleOpenProductPage(p)}
+                    onQuickOrder={(p) => {
+                      setQuickOrderVariant(undefined);
+                      setQuickOrderQuantity(1);
+                      setQuickOrderProduct(p);
+                    }}
                     showInstantPill={false}
                     quickEditMode={quickEditMode}
                     onQuickEdit={(p) => {
@@ -907,11 +986,16 @@ export function App() {
 
       {/* 6. FAQ Section */}
       <FAQSection />
+    </>
+  )}
 
       {/* 7. Footer */}
       <Footer
         onSelectCategory={(cat) => {
           setSelectedCategory(cat);
+          if (selectedProductPage) {
+            handleCloseProductPage();
+          }
           scrollToProducts();
         }}
         onOpenAdmin={openAdmin}
@@ -924,13 +1008,22 @@ export function App() {
         cartCount={totalCartCount}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenSearch={() => {
+          if (selectedProductPage) {
+            handleCloseProductPage();
+          }
           scrollToProducts();
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onOpenCategories={() => {
+          if (selectedProductPage) {
+            handleCloseProductPage();
+          }
           scrollToProducts();
         }}
         onGoHome={() => {
+          if (selectedProductPage) {
+            handleCloseProductPage();
+          }
           setSelectedCategory('all');
           setSearchQuery('');
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -944,7 +1037,13 @@ export function App() {
           <QuickOrderModal
             product={quickOrderProduct}
             products={products}
-            onClose={() => setQuickOrderProduct(null)}
+            initialVariant={quickOrderVariant}
+            initialQuantity={quickOrderQuantity}
+            onClose={() => {
+              setQuickOrderProduct(null);
+              setQuickOrderVariant(undefined);
+              setQuickOrderQuantity(1);
+            }}
             onOrderSuccess={(msg) => setToastMessage(msg)}
             onPlaceOrder={handlePlaceOrder}
             coupons={coupons}

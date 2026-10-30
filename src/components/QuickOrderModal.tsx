@@ -37,6 +37,8 @@ interface QuickOrderModalProps {
   onOpenPolicy?: () => void;
   onCouponUsed?: (couponCode: string) => void;
   products?: Product[];
+  initialVariant?: ProductVariant;
+  initialQuantity?: number;
 }
 
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
@@ -49,11 +51,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   onOpenPolicy,
   onCouponUsed,
   products = [],
+  initialVariant,
+  initialQuantity,
 }) => {
   const paymentMethods = getStorePaymentMethods(settings);
   const [activeTab, setActiveTab] = useState<'mobile' | 'international' | 'netbanking'>('mobile');
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(undefined);
-  const [quantity, setQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(initialVariant);
+  const [quantity, setQuantity] = useState(initialQuantity || 1);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0]?.id || 'bkash');
@@ -81,13 +85,15 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    if (product?.variants && product.variants.length > 0) {
+    if (initialVariant) {
+      setSelectedVariant(initialVariant);
+    } else if (product?.variants && product.variants.length > 0) {
       const defaultVar = product.variants.find((v) => v.isPopular) || product.variants[0];
       setSelectedVariant(defaultVar);
     } else {
       setSelectedVariant(undefined);
     }
-    setQuantity(1);
+    setQuantity(initialQuantity && initialQuantity > 0 ? initialQuantity : 1);
     setErrorMsg('');
     setOrderComplete(false);
     setAutoDeliveredData(null);
