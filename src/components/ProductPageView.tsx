@@ -469,6 +469,36 @@ export const ProductPageView: React.FC<ProductPageViewProps> = ({
                 )}
               </div>
 
+              {/* Supported Payment Gateways Strip (SMMNEA Official Logos) */}
+              <div className="p-3 bg-white rounded-2xl border border-slate-200/90 flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#00C853]"></span>
+                  নিরাপদ পেমেন্ট মাধ্যম:
+                </span>
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  <img
+                    src="https://pay.smmnea.com/assets/gateways/bkash/bkashpersonal.png"
+                    alt="bKash"
+                    className="h-5 w-auto object-contain"
+                  />
+                  <img
+                    src="https://pay.smmnea.com/assets/gateways/nagad/nagadpersonal.png"
+                    alt="Nagad"
+                    className="h-5 w-auto object-contain"
+                  />
+                  <img
+                    src="https://pay.smmnea.com/assets/gateways/rocket/rocketpersonal.png"
+                    alt="Rocket"
+                    className="h-5 w-auto object-contain"
+                  />
+                  <img
+                    src="https://pay.smmnea.com/assets/gateways/upay/upaypersonal.png"
+                    alt="Upay"
+                    className="h-5 w-auto object-contain"
+                  />
+                </div>
+              </div>
+
             </div>
 
           </div>

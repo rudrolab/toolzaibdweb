@@ -29,7 +29,8 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
       type: 'Personal (Send Money / Cash Out)',
       fee: '0%',
       color: '#E2136E',
-      logoText: 'bKash'
+      logoText: 'bKash',
+      logoUrl: 'https://pay.smmnea.com/assets/gateways/bkash/bkashpersonal.png'
     },
     {
       id: 'nagad',
@@ -38,7 +39,8 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
       type: 'Personal (Send Money)',
       fee: '0%',
       color: '#F7941D',
-      logoText: 'Nagad'
+      logoText: 'Nagad',
+      logoUrl: 'https://pay.smmnea.com/assets/gateways/nagad/nagadpersonal.png'
     },
     {
       id: 'rocket',
@@ -47,7 +49,8 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
       type: 'Personal (Send Money)',
       fee: '0%',
       color: '#8C3494',
-      logoText: 'Rocket'
+      logoText: 'Rocket',
+      logoUrl: 'https://pay.smmnea.com/assets/gateways/rocket/rocketpersonal.png'
     },
     {
       id: 'upay',
@@ -56,7 +59,8 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
       type: 'Personal (Send Money)',
       fee: '0%',
       color: '#0072BC',
-      logoText: 'Upay'
+      logoText: 'Upay',
+      logoUrl: 'https://pay.smmnea.com/assets/gateways/upay/upaypersonal.png'
     },
     {
       id: 'crypto',
@@ -65,7 +69,8 @@ export function getStorePaymentMethods(settings?: Partial<StoreSettings>) {
       type: 'TRC20 / BEP20',
       fee: '0%',
       color: '#F3BA2F',
-      logoText: 'Binance'
+      logoText: 'Binance',
+      logoUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png?v=035'
     }
   ];
 }

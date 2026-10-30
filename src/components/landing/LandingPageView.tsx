@@ -82,7 +82,6 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [appliedCouponObj, setAppliedCouponObj] = useState<Coupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState('eps');
   const [formError, setFormError] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState('');
 
@@ -986,38 +985,61 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
                   </div>
                 </div>
 
-                {/* Payment Methods Selector */}
+                {/* Payment Methods Selector in In-Page Form */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-700">
                     পেমেন্ট মেথড (Payment Method)
                   </label>
 
-                  <div
-                    onClick={() => setSelectedPayment('eps')}
-                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
-                      selectedPayment === 'eps'
-                        ? 'bg-[#F0FDF4] border-[#00C853] shadow-sm'
-                        : 'bg-white border-[#E2E8F0]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2.5">
+                  <div className="p-3.5 rounded-xl border-2 border-[#00C853] bg-[#F0FDF4] shadow-sm space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full border-2 border-[#00C853] flex items-center justify-center">
                           <div className="w-2 h-2 rounded-full bg-[#00C853]" />
                         </div>
-                        <span className="font-bold text-xs text-[#0F172A]">Easy Payment System</span>
-                        <span className="bg-[#16A34A] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                        <span className="font-bold text-xs text-[#0F172A]">Direct Payment Gateway</span>
+                        <span className="bg-[#16A34A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
                           INSTANT
                         </span>
                       </div>
                       <ShieldCheck className="w-4 h-4 text-[#16A34A]" />
                     </div>
 
-                    <img
-                      src="./products/Minimal-Payment-Methods-Banner.webp"
-                      alt="bKash, Nagad, Rocket, Cards"
-                      className="w-full max-w-[280px] h-auto object-contain rounded"
-                    />
+                    {/* Official Gateway Logos Strip */}
+                    <div className="grid grid-cols-4 gap-2 pt-1">
+                      <div className="h-10 bg-white rounded-lg border border-slate-200 p-1 flex items-center justify-center shadow-xs">
+                        <img
+                          src="https://pay.smmnea.com/assets/gateways/bkash/bkashpersonal.png"
+                          alt="bKash"
+                          className="h-7 w-full object-contain"
+                        />
+                      </div>
+                      <div className="h-10 bg-white rounded-lg border border-slate-200 p-1 flex items-center justify-center shadow-xs">
+                        <img
+                          src="https://pay.smmnea.com/assets/gateways/nagad/nagadpersonal.png"
+                          alt="Nagad"
+                          className="h-7 w-full object-contain"
+                        />
+                      </div>
+                      <div className="h-10 bg-white rounded-lg border border-slate-200 p-1 flex items-center justify-center shadow-xs">
+                        <img
+                          src="https://pay.smmnea.com/assets/gateways/rocket/rocketpersonal.png"
+                          alt="Rocket"
+                          className="h-7 w-full object-contain"
+                        />
+                      </div>
+                      <div className="h-10 bg-white rounded-lg border border-slate-200 p-1 flex items-center justify-center shadow-xs">
+                        <img
+                          src="https://pay.smmnea.com/assets/gateways/upay/upaypersonal.png"
+                          alt="Upay"
+                          className="h-7 w-full object-contain"
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      🔒 বিকাশ, নগদ, রকেট, উপায় ও USDT দিয়ে নিরাপদ পেমেন্ট ও অটো ভেরিফিকেশন
+                    </p>
                   </div>
                 </div>
 
@@ -1234,30 +1256,145 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
                   </div>
                 </div>
 
-                {/* Payment Method Selector Tabs */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider block">
-                    পেমেন্ট মেথড সিলেক্ট করুন:
-                  </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                    {paymentMethods.map((method) => {
-                      const isSelected = selectedPaymentMethod === method.id;
-                      return (
-                        <button
-                          key={method.id}
-                          type="button"
-                          onClick={() => setSelectedPaymentMethod(method.id)}
-                          className={`py-2 px-1.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                            isSelected
-                              ? 'bg-blue-50 border-[#0057d0] text-[#0057d0] font-bold shadow-sm ring-1 ring-[#0057d0]'
-                              : 'bg-white border-[#E2E8F0] text-slate-600 hover:border-slate-300'
-                          }`}
-                        >
-                          <span className="text-xs font-extrabold">{method.name}</span>
-                          <span className="text-[9px] opacity-75">{method.fee} Fee</span>
-                        </button>
-                      );
-                    })}
+                {/* Payment Method Selector Cards with SMMNEA Official Logos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider block">
+                      পেমেন্ট মেথড সিলেক্ট করুন:
+                    </label>
+                    <span className="text-[11px] font-semibold text-[#0057D0]">
+                      Send Money (0% Fee)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                    {/* Bkash Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('bkash')}
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-white transition-all hover:shadow-md cursor-pointer ${
+                        selectedPaymentMethod === 'bkash'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      {selectedPaymentMethod === 'bkash' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
+                      <div className="flex h-12 w-full items-center justify-center px-3 py-1.5">
+                        <img
+                          className="h-9 w-full object-contain"
+                          alt="bKash Personal"
+                          src="https://pay.smmnea.com/assets/gateways/bkash/bkashpersonal.png"
+                        />
+                      </div>
+                      <div className={`w-full border-t px-2 py-1.5 ${selectedPaymentMethod === 'bkash' ? 'bg-[#0057d0]/5 font-bold text-[#0057d0]' : 'text-slate-700 font-medium'}`}>
+                        <p className="text-center text-[11px] tracking-wide">bKash Personal</p>
+                      </div>
+                    </button>
+
+                    {/* Nagad Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('nagad')}
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-white transition-all hover:shadow-md cursor-pointer ${
+                        selectedPaymentMethod === 'nagad'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      {selectedPaymentMethod === 'nagad' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
+                      <div className="flex h-12 w-full items-center justify-center px-3 py-1.5">
+                        <img
+                          className="h-9 w-full object-contain"
+                          alt="Nagad Personal"
+                          src="https://pay.smmnea.com/assets/gateways/nagad/nagadpersonal.png"
+                        />
+                      </div>
+                      <div className={`w-full border-t px-2 py-1.5 ${selectedPaymentMethod === 'nagad' ? 'bg-[#0057d0]/5 font-bold text-[#0057d0]' : 'text-slate-700 font-medium'}`}>
+                        <p className="text-center text-[11px] tracking-wide">Nagad Personal</p>
+                      </div>
+                    </button>
+
+                    {/* Rocket Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('rocket')}
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-white transition-all hover:shadow-md cursor-pointer ${
+                        selectedPaymentMethod === 'rocket'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      {selectedPaymentMethod === 'rocket' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
+                      <div className="flex h-12 w-full items-center justify-center px-3 py-1.5">
+                        <img
+                          className="h-9 w-full object-contain"
+                          alt="Rocket Personal"
+                          src="https://pay.smmnea.com/assets/gateways/rocket/rocketpersonal.png"
+                        />
+                      </div>
+                      <div className={`w-full border-t px-2 py-1.5 ${selectedPaymentMethod === 'rocket' ? 'bg-[#0057d0]/5 font-bold text-[#0057d0]' : 'text-slate-700 font-medium'}`}>
+                        <p className="text-center text-[11px] tracking-wide">Rocket Personal</p>
+                      </div>
+                    </button>
+
+                    {/* Upay Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('upay')}
+                      className={`relative flex flex-col items-center overflow-hidden rounded-xl border bg-white transition-all hover:shadow-md cursor-pointer ${
+                        selectedPaymentMethod === 'upay'
+                          ? 'border-2 border-[#0057d0] ring-2 ring-[#0057d0]/30 shadow-md bg-blue-50/20'
+                          : 'border-[#E0E0E0] opacity-85 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      {selectedPaymentMethod === 'upay' && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#0057d0] text-white flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </span>
+                      )}
+                      <div className="flex h-12 w-full items-center justify-center px-3 py-1.5">
+                        <img
+                          className="h-9 w-full object-contain"
+                          alt="Upay Personal"
+                          src="https://pay.smmnea.com/assets/gateways/upay/upaypersonal.png"
+                        />
+                      </div>
+                      <div className={`w-full border-t px-2 py-1.5 ${selectedPaymentMethod === 'upay' ? 'bg-[#0057d0]/5 font-bold text-[#0057d0]' : 'text-slate-700 font-medium'}`}>
+                        <p className="text-center text-[11px] tracking-wide">Upay Personal</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Binance Pay / USDT option toggle */}
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod(selectedPaymentMethod === 'crypto' ? 'bkash' : 'crypto')}
+                      className={`text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        selectedPaymentMethod === 'crypto'
+                          ? 'text-amber-700 font-bold'
+                          : 'text-slate-500 hover:text-[#0057d0]'
+                      }`}
+                    >
+                      <img
+                        src="https://cryptologos.cc/logos/tether-usdt-logo.png?v=035"
+                        alt="USDT"
+                        className="w-3.5 h-3.5 inline object-contain"
+                      />
+                      <span>USDT / Binance Pay দিয়ে পেমেন্ট করতে চান?</span>
+                    </button>
                   </div>
                 </div>
 
